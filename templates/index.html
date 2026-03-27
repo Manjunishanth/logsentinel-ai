@@ -1,0 +1,1370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LogSentinel AI — Real-Time Log Analysis</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#040710;--s1:#0b1221;--s2:#101828;--s3:#1a2438;
+  --acc:#00f5c4;--acc2:#6366f1;--acc3:#f59e0b;
+  --err:#ef4444;--warn:#f97316;--ok:#22c55e;
+  --txt:#e2e8f0;--muted:#64748b;--border:rgba(0,245,196,0.1);
+  --glow:0 0 24px rgba(0,245,196,0.12);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--txt);min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;
+  background-image:linear-gradient(rgba(0,245,196,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(0,245,196,0.025) 1px,transparent 1px);
+  background-size:44px 44px;pointer-events:none;z-index:0}
+
+/* HEADER */
+header{position:sticky;top:0;z-index:200;height:58px;
+  display:flex;align-items:center;justify-content:space-between;padding:0 2rem;
+  background:rgba(4,7,16,0.95);backdrop-filter:blur(20px);border-bottom:1px solid var(--border)}
+.logo{display:flex;align-items:center;gap:9px;font-weight:800;font-size:1rem;letter-spacing:-0.3px}
+.logo-pulse{width:9px;height:9px;border-radius:50%;background:var(--acc);box-shadow:0 0 10px var(--acc);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.8)}}
+.nav{display:flex;gap:2px}
+.nav-btn{padding:5px 13px;border-radius:6px;font-size:.76rem;font-weight:700;cursor:pointer;
+  border:none;background:transparent;color:var(--muted);transition:all .2s;letter-spacing:.3px}
+.nav-btn:hover,.nav-btn.active{background:rgba(0,245,196,0.1);color:var(--acc)}
+.live-badge{display:flex;align-items:center;gap:5px;font-family:'Space Mono',monospace;font-size:.68rem;color:var(--acc)}
+.live-dot{width:5px;height:5px;border-radius:50%;background:var(--acc);animation:pulse 1.5s infinite}
+
+/* LAYOUT */
+.main{position:relative;z-index:1;max-width:1400px;margin:0 auto;padding:0 2rem 4rem}
+
+/* HERO STRIP */
+.hero{padding:52px 0 40px;text-align:center}
+.hero-tag{display:inline-block;padding:4px 14px;border-radius:20px;margin-bottom:16px;
+  background:rgba(99,102,241,.15);border:1px solid rgba(99,102,241,.3);
+  font-size:.7rem;font-weight:700;letter-spacing:2px;color:var(--acc2);text-transform:uppercase}
+.hero h1{font-size:clamp(2.2rem,5vw,3.8rem);font-weight:800;line-height:1.06;
+  background:linear-gradient(135deg,#fff 20%,var(--acc) 60%,var(--acc2));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:12px}
+.hero p{font-size:.95rem;color:var(--muted);max-width:560px;margin:0 auto 32px;line-height:1.7}
+.hero-kpis{display:flex;justify-content:center;gap:2.5rem;flex-wrap:wrap}
+.kpi{text-align:center}
+.kpi .v{font-size:1.9rem;font-weight:800;font-family:'Space Mono',monospace;
+  background:linear-gradient(135deg,var(--acc),var(--acc2));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.kpi .l{font-size:.68rem;color:var(--muted);font-weight:700;letter-spacing:.8px;margin-top:2px}
+
+/* MODULE TABS */
+.tabs{display:flex;gap:6px;margin:0 0 28px;border-bottom:1px solid var(--border);padding-bottom:0}
+.tab{padding:10px 20px;font-weight:700;font-size:.82rem;cursor:pointer;border:none;
+  background:transparent;color:var(--muted);position:relative;transition:color .2s;letter-spacing:.3px}
+.tab::after{content:'';position:absolute;bottom:-1px;left:0;right:0;height:2px;
+  background:var(--acc);transform:scaleX(0);transition:transform .25s}
+.tab:hover{color:var(--txt)}
+.tab.active{color:var(--acc)}
+.tab.active::after{transform:scaleX(1)}
+.panel{display:none;animation:fadeUp .35s ease}
+.panel.active{display:block}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+
+/* CARDS */
+.card{background:var(--s1);border:1px solid var(--border);border-radius:14px;
+  padding:22px;transition:all .25s;position:relative;overflow:hidden}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,transparent,var(--acc),transparent);opacity:0;transition:opacity .3s}
+.card:hover{border-color:rgba(0,245,196,.25);box-shadow:var(--glow)}
+.card:hover::before{opacity:1}
+.card-title{font-size:.72rem;font-weight:700;color:var(--muted);letter-spacing:1.2px;
+  text-transform:uppercase;margin-bottom:16px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+@media(max-width:900px){.g3,.g4{grid-template-columns:1fr 1fr}}
+@media(max-width:600px){.g2,.g3,.g4{grid-template-columns:1fr}}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:7px;padding:9px 20px;border-radius:8px;
+  font-weight:700;font-size:.82rem;cursor:pointer;transition:all .2s;border:none;
+  font-family:'Syne',sans-serif;letter-spacing:.3px}
+.btn-primary{background:var(--acc);color:#000}
+.btn-primary:hover{background:#00d4a8;transform:translateY(-1px)}
+.btn-secondary{background:var(--s3);color:var(--txt);border:1px solid var(--border)}
+.btn-secondary:hover{border-color:var(--acc);color:var(--acc)}
+.btn-danger{background:rgba(239,68,68,.15);color:var(--err);border:1px solid rgba(239,68,68,.3)}
+.btn-danger:hover{background:rgba(239,68,68,.25)}
+.btn:disabled{opacity:.4;cursor:not-allowed;transform:none!important}
+
+/* UPLOAD */
+.drop-zone{border:2px dashed rgba(0,245,196,.25);border-radius:14px;padding:44px 20px;
+  text-align:center;cursor:pointer;transition:all .3s;background:rgba(0,245,196,.015);position:relative}
+.drop-zone.drag{border-color:var(--acc);background:rgba(0,245,196,.06)}
+.drop-zone h3{font-size:1rem;font-weight:700;margin:12px 0 6px}
+.drop-zone p{color:var(--muted);font-size:.82rem}
+.drop-icon{font-size:2.8rem}
+#fileInput{display:none}
+
+/* METRICS */
+.metric{background:var(--s2);border:1px solid var(--border);border-radius:12px;padding:18px 20px}
+.metric .val{font-size:1.9rem;font-weight:800;font-family:'Space Mono',monospace}
+.metric .lbl{font-size:.68rem;color:var(--muted);font-weight:700;letter-spacing:.5px;margin-top:3px}
+.mbar{height:3px;border-radius:2px;margin-top:10px;background:var(--s3);overflow:hidden}
+.mbar-f{height:100%;border-radius:2px;transition:width 1.4s cubic-bezier(.4,0,.2,1);width:0}
+
+/* LOG TABLE */
+.tbl-wrap{overflow-x:auto;max-height:400px;overflow-y:auto}
+.tbl-wrap::-webkit-scrollbar{width:5px;height:5px}
+.tbl-wrap::-webkit-scrollbar-track{background:var(--s2)}
+.tbl-wrap::-webkit-scrollbar-thumb{background:rgba(0,245,196,.2);border-radius:3px}
+table{width:100%;border-collapse:collapse;font-family:'Space Mono',monospace;font-size:.71rem;white-space:nowrap}
+th{padding:9px 12px;text-align:left;color:var(--muted);border-bottom:1px solid var(--border);
+  font-size:.64rem;letter-spacing:1.2px;font-weight:700;background:var(--s1);position:sticky;top:0}
+td{padding:8px 12px;border-bottom:1px solid rgba(255,255,255,.035)}
+tr:hover td{background:rgba(0,245,196,.025)}
+.tag{display:inline-block;padding:2px 7px;border-radius:4px;font-size:.64rem;font-weight:700}
+.lERROR,.lFATAL{background:rgba(239,68,68,.15);color:#ef4444;border:1px solid rgba(239,68,68,.3)}
+.lWARN{background:rgba(249,115,22,.15);color:#f97316;border:1px solid rgba(249,115,22,.3)}
+.lINFO{background:rgba(99,102,241,.15);color:#818cf8;border:1px solid rgba(99,102,241,.3)}
+.lCRITICAL{background:rgba(220,38,38,.2);color:#fca5a5;border:1px solid rgba(220,38,38,.5)}
+.lDEBUG{background:rgba(100,116,139,.15);color:#94a3b8;border:1px solid rgba(100,116,139,.3)}
+.lTRACE{background:rgba(100,116,139,.1);color:#64748b;border:1px solid rgba(100,116,139,.2)}
+.anomaly-yes{color:var(--err);font-weight:700}
+.anomaly-no{color:var(--ok)}
+
+/* COMPARE BOX */
+.compare{display:grid;grid-template-columns:1fr 40px 1fr;gap:10px;align-items:start;margin-bottom:16px}
+.log-box{font-family:'Space Mono',monospace;font-size:.69rem;padding:12px;border-radius:8px;line-height:1.7;word-break:break-all}
+.raw-box{background:#0a0808;border:1px solid rgba(239,68,68,.2);color:#fca5a5}
+.clean-box{background:#040e0a;border:1px solid rgba(0,245,196,.2);color:var(--acc)}
+.arr-box{display:flex;align-items:center;justify-content:center;font-size:1.4rem;color:var(--acc);padding-top:8px}
+
+/* PIPELINE */
+.pipe{display:flex;align-items:center;gap:0;flex-wrap:wrap;margin:14px 0}
+.pipe-step{background:var(--s2);border:1px solid var(--border);padding:8px 14px;border-radius:7px;
+  font-size:.73rem;font-weight:700;white-space:nowrap;margin:3px 0}
+.pipe-arr{color:var(--acc);padding:0 6px;font-size:1rem}
+
+/* WORD CLOUD */
+#wordcloud{padding:8px;line-height:2.4;text-align:center;min-height:120px}
+.wc-w{display:inline-block;padding:3px 9px;margin:3px;border-radius:5px;
+  font-family:'Space Mono',monospace;font-weight:700;cursor:default;transition:transform .15s}
+.wc-w:hover{transform:scale(1.12)}
+
+/* PROGRESS BAR */
+.prog-row{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.prog-label{font-size:.75rem;font-family:'Space Mono',monospace;min-width:120px;color:var(--txt)}
+.prog-bar-bg{flex:1;height:6px;background:var(--s3);border-radius:3px;overflow:hidden}
+.prog-bar-f{height:100%;border-radius:3px;transition:width 1.2s ease}
+.prog-val{font-size:.72rem;font-family:'Space Mono',monospace;color:var(--muted);min-width:40px;text-align:right}
+
+/* FILTER ROW */
+.filter-row{display:flex;gap:8px;margin-bottom:14px;align-items:center;flex-wrap:wrap}
+.filter-btn{padding:5px 12px;border-radius:6px;font-size:.72rem;font-weight:700;cursor:pointer;
+  border:1px solid var(--border);background:transparent;color:var(--muted);transition:all .15s}
+.filter-btn.active,.filter-btn:hover{border-color:var(--acc);color:var(--acc)}
+.filter-btn.f-ERROR{border-color:rgba(239,68,68,.4)}
+.filter-btn.f-ERROR.active,.filter-btn.f-ERROR:hover{border-color:var(--err);color:var(--err);background:rgba(239,68,68,.1)}
+.filter-btn.f-WARN{border-color:rgba(249,115,22,.4)}
+.filter-btn.f-WARN.active,.filter-btn.f-WARN:hover{border-color:var(--warn);color:var(--warn);background:rgba(249,115,22,.1)}
+
+/* PAGINATION */
+.pag{display:flex;gap:6px;margin-top:12px;align-items:center;justify-content:center}
+.pag-btn{padding:5px 12px;border-radius:6px;border:1px solid var(--border);background:transparent;
+  color:var(--muted);font-size:.74rem;cursor:pointer;transition:all .15s;font-family:'Space Mono',monospace}
+.pag-btn:hover{border-color:var(--acc);color:var(--acc)}
+.pag-btn:disabled{opacity:.3;cursor:not-allowed}
+.pag-info{font-size:.72rem;color:var(--muted);font-family:'Space Mono',monospace;padding:0 8px}
+
+/* STATUS */
+.status-msg{padding:10px 14px;border-radius:8px;font-size:.8rem;font-weight:600;
+  margin-bottom:14px;display:none}
+.status-ok{background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);color:var(--ok)}
+.status-err{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);color:var(--err)}
+.status-info{background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.3);color:#818cf8}
+
+/* UPLOAD HISTORY */
+.hist-item{display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:9px;
+  background:var(--s2);border:1px solid var(--border);margin-bottom:8px;cursor:pointer;transition:all .2s}
+.hist-item:hover{border-color:rgba(0,245,196,.3);background:var(--s3)}
+.hist-item.selected{border-color:var(--acc);background:rgba(0,245,196,.06)}
+.hist-fname{font-weight:700;font-size:.84rem;flex:1}
+.hist-meta{font-size:.68rem;color:var(--muted);font-family:'Space Mono',monospace}
+.hist-status{font-size:.64rem;padding:2px 7px;border-radius:4px;font-weight:700}
+.s-ready{background:rgba(34,197,94,.15);color:var(--ok)}
+.s-processing{background:rgba(99,102,241,.15);color:#818cf8}
+.s-error{background:rgba(239,68,68,.15);color:var(--err)}
+
+/* LOADING SPINNER */
+.spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(0,245,196,.3);
+  border-top-color:var(--acc);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ANOMALY SCORE BAR */
+.ascore{display:flex;align-items:center;gap:8px}
+.ascore-bar{flex:1;height:4px;background:var(--s3);border-radius:2px;overflow:hidden}
+.ascore-f{height:100%;border-radius:2px}
+
+/* EMPTY STATE */
+.empty{text-align:center;padding:40px 20px;color:var(--muted)}
+.empty-icon{font-size:2.5rem;margin-bottom:10px}
+.empty p{font-size:.85rem}
+
+/* SECTION DIVIDER */
+.sdiv{height:1px;background:var(--border);margin:28px 0}
+.chart-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+.chart-title{font-weight:700;font-size:.88rem}
+.chart-badge{font-size:.62rem;font-family:'Space Mono',monospace;color:var(--acc);
+  background:rgba(0,245,196,.08);padding:3px 8px;border-radius:4px;letter-spacing:.5px}
+
+/* RCA SEVERITY COLORS */
+.sev-CRITICAL{border-left:4px solid #dc2626;background:rgba(220,38,38,.06)}
+.sev-HIGH{border-left:4px solid #f97316;background:rgba(249,115,22,.05)}
+.sev-MEDIUM{border-left:4px solid #f59e0b;background:rgba(245,158,11,.05)}
+.sev-LOW{border-left:4px solid #64748b;background:rgba(100,116,139,.05)}
+.sev-badge-CRITICAL{background:rgba(220,38,38,.2);color:#fca5a5;border:1px solid rgba(220,38,38,.4)}
+.sev-badge-HIGH{background:rgba(249,115,22,.15);color:#fb923c;border:1px solid rgba(249,115,22,.35)}
+.sev-badge-MEDIUM{background:rgba(245,158,11,.15);color:#fbbf24;border:1px solid rgba(245,158,11,.35)}
+.sev-badge-LOW{background:rgba(100,116,139,.15);color:#94a3b8;border:1px solid rgba(100,116,139,.3)}
+.rca-card{border-radius:12px;padding:18px 20px;margin-bottom:14px;transition:all .25s;position:relative}
+.rca-card:hover{transform:translateX(3px)}
+.rca-rank{font-family:'Space Mono',monospace;font-size:.64rem;color:var(--muted);margin-bottom:8px}
+.rca-label{font-size:1rem;font-weight:800;margin-bottom:6px}
+.rca-explain{font-size:.8rem;color:var(--muted);line-height:1.7;margin-bottom:12px}
+.rca-meta{display:flex;gap:14px;flex-wrap:wrap;font-size:.72rem;font-family:'Space Mono',monospace}
+.rca-meta span{color:var(--muted)}
+.rca-meta b{color:var(--txt)}
+.conf-bar-bg{flex:1;height:5px;background:var(--s3);border-radius:3px;overflow:hidden;max-width:160px}
+.conf-bar-f{height:100%;border-radius:3px}
+
+  padding:7px 12px;border-radius:7px;font-family:'Syne',sans-serif;font-size:.82rem;outline:none;
+  transition:border-color .2s}
+input[type=text]:focus{border-color:rgba(0,245,196,.4)}
+select{background:var(--s2);border:1px solid var(--border);color:var(--txt);
+  padding:6px 10px;border-radius:7px;font-family:'Syne',sans-serif;font-size:.78rem;outline:none}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-pulse"></div>
+    LogSentinel <span style="color:var(--acc)">AI</span>
+  </div>
+  <nav class="nav">
+    <button class="nav-btn active" onclick="showTab('collection',this)">📁 Collection</button>
+    <button class="nav-btn" onclick="showTab('preprocessing',this)">⚙️ Preprocessing</button>
+    <button class="nav-btn" onclick="showTab('visualization',this)">📊 Visualization</button>
+    <button class="nav-btn" onclick="showTab('anomalies',this)">🚨 Anomalies</button>
+    <button class="nav-btn" onclick="showTab('rca',this)">🔍 Root Cause</button>
+  </nav>
+  <div class="live-badge"><div class="live-dot"></div>LIVE BACKEND</div>
+</header>
+
+<div class="main">
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-tag">Intelligent Log Analysis System</div>
+  <h1>Real-Time Log Anomaly<br>Detection Platform</h1>
+  <p>Upload any log file — real preprocessing, real ML (TF-IDF + Isolation Forest), real visualization. No mock data.</p>
+  <div class="hero-kpis">
+    <div class="kpi"><div class="v" id="kpi-total">—</div><div class="l">TOTAL LOGS</div></div>
+    <div class="kpi"><div class="v" id="kpi-errors">—</div><div class="l">ERRORS</div></div>
+    <div class="kpi"><div class="v" id="kpi-anomalies">—</div><div class="l">ANOMALIES</div></div>
+    <div class="kpi"><div class="v" id="kpi-files">0</div><div class="l">FILES LOADED</div></div>
+  </div>
+</div>
+
+<!-- MODULE TABS -->
+<div class="tabs">
+  <button class="tab active" id="tab-collection" onclick="showTab('collection',this)">01 · Collection</button>
+  <button class="tab" id="tab-preprocessing" onclick="showTab('preprocessing',this)">02 · Preprocessing</button>
+  <button class="tab" id="tab-visualization" onclick="showTab('visualization',this)">03 · Visualization</button>
+  <button class="tab" id="tab-anomalies" onclick="showTab('anomalies',this)">04 · Anomalies</button>
+  <button class="tab" id="tab-rca" onclick="showTab('rca',this);loadRCA()">05 · Root Cause</button>
+</div>
+
+<!-- ══════════════════ PANEL 1: COLLECTION ══════════════════ -->
+<div class="panel active" id="panel-collection">
+  <div class="g2" style="margin-bottom:20px">
+    <!-- Upload Zone -->
+    <div>
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-title">📤 Upload Log File</div>
+        <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+          <div class="drop-icon">📂</div>
+          <h3>Drop log file here or click to browse</h3>
+          <p>Supports .log · .txt · .csv — up to 50MB</p>
+          <input type="file" id="fileInput" accept=".log,.txt,.csv">
+        </div>
+        <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-primary" id="uploadBtn" onclick="uploadFile()" disabled>
+            <span>⬆️</span> Upload & Parse
+          </button>
+          <button class="btn btn-secondary" onclick="generateSample()">
+            <span>🎲</span> Generate Sample Logs
+          </button>
+        </div>
+        <div class="status-msg" id="uploadStatus"></div>
+      </div>
+
+      <!-- Previous Files -->
+      <div class="card">
+        <div class="card-title" style="margin-bottom:10px">📋 Loaded Files</div>
+        <div id="uploadHistory"><div class="empty"><div class="empty-icon">📭</div><p>No files uploaded yet</p></div></div>
+      </div>
+    </div>
+
+    <!-- Right: Metrics + Live Stream -->
+    <div>
+      <div class="g4" style="margin-bottom:16px">
+        <div class="metric"><div class="val" id="m-total" style="color:var(--acc)">—</div><div class="lbl">Total Logs</div><div class="mbar"><div class="mbar-f" id="mb-total" style="background:var(--acc)"></div></div></div>
+        <div class="metric"><div class="val" id="m-err" style="color:var(--err)">—</div><div class="lbl">Errors</div><div class="mbar"><div class="mbar-f" id="mb-err" style="background:var(--err)"></div></div></div>
+        <div class="metric"><div class="val" id="m-warn" style="color:var(--warn)">—</div><div class="lbl">Warnings</div><div class="mbar"><div class="mbar-f" id="mb-warn" style="background:var(--warn)"></div></div></div>
+        <div class="metric"><div class="val" id="m-info" style="color:var(--acc2)">—</div><div class="lbl">Info</div><div class="mbar"><div class="mbar-f" id="mb-info" style="background:var(--acc2)"></div></div></div>
+      </div>
+
+      <div class="card" style="padding:0;overflow:hidden">
+        <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px">
+          <span style="font-size:.7rem;font-weight:700;letter-spacing:1px;color:var(--muted)">RAW LOG STREAM</span>
+          <div class="filter-row" style="margin:0;flex:1;justify-content:flex-end">
+            <button class="filter-btn active" onclick="filterLogs('',this)">ALL</button>
+            <button class="filter-btn f-ERROR" onclick="filterLogs('ERROR',this)">ERROR</button>
+            <button class="filter-btn f-WARN" onclick="filterLogs('WARN',this)">WARN</button>
+            <button class="filter-btn" onclick="filterLogs('INFO',this)">INFO</button>
+          </div>
+        </div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>#</th><th>TIME</th><th>LEVEL</th><th>SOURCE</th><th>MESSAGE</th><th>CODE</th></tr></thead>
+            <tbody id="logTableBody"><tr><td colspan="6" style="text-align:center;padding:30px;color:var(--muted)">Upload a log file to begin</td></tr></tbody>
+          </table>
+        </div>
+        <div class="pag" id="logPag" style="padding:10px"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════ PANEL 2: PREPROCESSING ══════════════════ -->
+<div class="panel" id="panel-preprocessing">
+  <div class="card" style="margin-bottom:18px">
+    <div class="card-title">⚙️ Preprocessing Pipeline</div>
+    <div class="pipe">
+      <div class="pipe-step">📥 Raw Log</div><div class="pipe-arr">→</div>
+      <div class="pipe-step">🗓️ Strip Timestamps</div><div class="pipe-arr">→</div>
+      <div class="pipe-step">🌐 Remove IPs/URLs</div><div class="pipe-arr">→</div>
+      <div class="pipe-step">🔡 Lowercase</div><div class="pipe-arr">→</div>
+      <div class="pipe-step">✂️ Tokenize</div><div class="pipe-arr">→</div>
+      <div class="pipe-step">🗑️ Stop Words</div><div class="pipe-arr">→</div>
+      <div class="pipe-step">🌲 Isolation Forest</div><div class="pipe-arr">→</div>
+      <div class="pipe-step" style="border-color:rgba(0,245,196,.5);color:var(--acc)">✅ ML Ready</div>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-primary" id="preprocessBtn" onclick="runPreprocess()" disabled>
+        <span id="ppSpinner"></span> ⚡ Run Full Preprocessing + ML
+      </button>
+    </div>
+    <div class="status-msg" id="ppStatus"></div>
+  </div>
+
+  <!-- Before/After + Stats -->
+  <div class="g2" style="margin-bottom:18px">
+    <div class="card">
+      <div class="card-title">🔄 Raw → Cleaned Transformation</div>
+      <div style="font-size:.68rem;color:var(--muted);margin-bottom:6px">ORIGINAL:</div>
+      <div class="log-box raw-box" id="sampleRaw">Run preprocessing to see example...</div>
+      <div style="text-align:center;padding:8px;font-size:1.3rem">⬇️</div>
+      <div style="font-size:.68rem;color:var(--muted);margin-bottom:6px">CLEANED:</div>
+      <div class="log-box clean-box" id="sampleClean">—</div>
+    </div>
+    <div class="card">
+      <div class="card-title">📊 Preprocessing Results</div>
+      <div id="ppStats" class="empty"><div class="empty-icon">⚙️</div><p>Run preprocessing to see stats</p></div>
+    </div>
+  </div>
+
+  <!-- Processed log table -->
+  <div class="card" style="padding:0;overflow:hidden">
+    <div style="padding:12px 16px;border-bottom:1px solid var(--border)">
+      <span style="font-size:.7rem;font-weight:700;letter-spacing:1px;color:var(--muted)">PROCESSED LOG TABLE</span>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>#</th><th>LEVEL</th><th>CLEANED TEXT</th><th>TOKENS</th><th>REMOVED</th><th>ANOMALY</th><th>SCORE</th></tr></thead>
+        <tbody id="procTableBody"><tr><td colspan="7" style="text-align:center;padding:30px;color:var(--muted)">Run preprocessing first</td></tr></tbody>
+      </table>
+    </div>
+    <div class="pag" id="procPag" style="padding:10px"></div>
+  </div>
+</div>
+
+<!-- ══════════════════ PANEL 3: VISUALIZATION ══════════════════ -->
+<div class="panel" id="panel-visualization">
+  <div class="card" style="margin-bottom:16px;padding:14px 20px">
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <button class="btn btn-primary" id="vizBtn" onclick="loadViz()" disabled>📊 Generate All Charts</button>
+      <span style="font-size:.78rem;color:var(--muted)">Uses real data from uploaded + preprocessed logs</span>
+    </div>
+    <div class="status-msg" id="vizStatus"></div>
+  </div>
+
+  <!-- KPI row -->
+  <div class="g4" style="margin-bottom:18px" id="vizKpis"></div>
+
+  <!-- Charts Row 1 -->
+  <div class="g2" style="margin-bottom:18px">
+    <div class="card">
+      <div class="chart-header"><div class="chart-title">📊 Error Frequency</div><div class="chart-badge">BAR CHART</div></div>
+      <canvas id="barChart" height="220"></canvas>
+    </div>
+    <div class="card">
+      <div class="chart-header"><div class="chart-title">🥧 Log Level Distribution</div><div class="chart-badge">DOUGHNUT</div></div>
+      <canvas id="doughnutChart" height="220"></canvas>
+    </div>
+  </div>
+
+  <!-- Line Chart -->
+  <div class="card" style="margin-bottom:18px">
+    <div class="chart-header">
+      <div class="chart-title">📈 24-Hour Log Volume Trend</div>
+      <div style="display:flex;gap:8px"><div class="chart-badge">TIME SERIES</div><div class="chart-badge" style="background:rgba(239,68,68,.1);color:var(--err)">SPIKE DETECT</div></div>
+    </div>
+    <canvas id="lineChart" height="90"></canvas>
+  </div>
+
+  <!-- Word Cloud + Source Dist -->
+  <div class="g2" style="margin-bottom:18px">
+    <div class="card">
+      <div class="chart-header"><div class="chart-title">☁️ Keyword Word Cloud</div><div class="chart-badge">FREQUENCY MAP</div></div>
+      <div id="wordcloud"></div>
+    </div>
+    <div class="card">
+      <div class="chart-header"><div class="chart-title">📦 Source Distribution</div><div class="chart-badge">BAR CHART</div></div>
+      <canvas id="srcChart" height="200"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════ PANEL 4: ANOMALIES ══════════════════ -->
+<div class="panel" id="panel-anomalies">
+  <div class="g4" style="margin-bottom:18px" id="anomKpis"></div>
+  <div class="g2" style="margin-bottom:18px">
+    <div class="card">
+      <div class="chart-header"><div class="chart-title">🎯 Normal vs Anomaly</div><div class="chart-badge">POLAR AREA</div></div>
+      <canvas id="anomChart" height="230"></canvas>
+    </div>
+    <div class="card">
+      <div class="card-title">🚨 Top Anomalous Log Entries</div>
+      <div id="anomList" class="empty"><div class="empty-icon">🔍</div><p>Run preprocessing to detect anomalies</p></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">🌲 Model Info — TF-IDF + Isolation Forest</div>
+    <div class="g3">
+      <div style="background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:16px">
+        <div style="font-weight:800;font-size:.9rem;color:var(--acc);margin-bottom:8px">TF-IDF Vectorizer</div>
+        <div style="font-size:.78rem;color:var(--muted);line-height:1.7">
+          Converts preprocessed log tokens into numerical feature vectors.<br>
+          <b style="color:var(--txt)">max_features:</b> 500<br>
+          <b style="color:var(--txt)">n-grams:</b> (1,2) unigrams + bigrams<br>
+          <b style="color:var(--txt)">sublinear_tf:</b> True (log scaling)
+        </div>
+      </div>
+      <div style="background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:16px">
+        <div style="font-weight:800;font-size:.9rem;color:var(--acc2);margin-bottom:8px">Isolation Forest</div>
+        <div style="font-size:.78rem;color:var(--muted);line-height:1.7">
+          Unsupervised anomaly detection. Isolates outlier log vectors using random partition trees.<br>
+          <b style="color:var(--txt)">contamination:</b> 10%<br>
+          <b style="color:var(--txt)">estimators:</b> adaptive (n/5)<br>
+          <b style="color:var(--txt)">no labels needed</b>
+        </div>
+      </div>
+      <div style="background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:16px">
+        <div style="font-weight:800;font-size:.9rem;color:var(--acc3);margin-bottom:8px">Anomaly Scoring</div>
+        <div style="font-size:.78rem;color:var(--muted);line-height:1.7">
+          Raw scores normalized to 0–1 range. Logs with score &lt; threshold marked as anomalies. Displayed per-row in the processed table.
+          <br><b style="color:var(--txt)">Lower score = more anomalous</b>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════ PANEL 5: ROOT CAUSE ANALYSIS ══════════════════ -->
+<div class="panel" id="panel-rca">
+
+  <!-- Pipeline Runner Card -->
+  <div class="card" style="margin-bottom:18px">
+    <div class="card-title">🚀 RCA Pipeline — Run All 3 Steps</div>
+
+    <!-- Step indicators -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:18px">
+
+      <!-- Step 1: Validation -->
+      <div id="step1-box" style="border-radius:10px;padding:14px 16px;background:var(--s2);border:1px solid var(--border);transition:all .3s">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <span style="font-size:.68rem;font-weight:700;letter-spacing:1px;color:var(--muted)">STEP 1</span>
+          <span id="step1-badge" style="font-size:.62rem;padding:2px 7px;border-radius:4px;background:rgba(100,116,139,.15);color:#94a3b8;border:1px solid rgba(100,116,139,.3)">PENDING</span>
+        </div>
+        <div style="font-weight:800;font-size:.9rem;margin-bottom:4px">📊 Dataset Validation</div>
+        <div style="font-size:.74rem;color:var(--muted);margin-bottom:10px">Splits data into train/test sets and runs cross-validation</div>
+        <button class="btn btn-secondary" id="step1-btn" onclick="runStep1()" disabled style="width:100%;justify-content:center">
+          <span id="step1-spinner"></span> Run Validation
+        </button>
+        <div id="step1-msg" style="font-size:.72rem;margin-top:8px;display:none"></div>
+      </div>
+
+      <!-- Step 2: BERT -->
+      <div id="step2-box" style="border-radius:10px;padding:14px 16px;background:var(--s2);border:1px solid var(--border);transition:all .3s">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <span style="font-size:.68rem;font-weight:700;letter-spacing:1px;color:var(--muted)">STEP 2</span>
+          <span id="step2-badge" style="font-size:.62rem;padding:2px 7px;border-radius:4px;background:rgba(100,116,139,.15);color:#94a3b8;border:1px solid rgba(100,116,139,.3)">PENDING</span>
+        </div>
+        <div style="font-weight:800;font-size:.9rem;margin-bottom:4px">🤖 BERT Training</div>
+        <div style="font-size:.74rem;color:var(--muted);margin-bottom:10px">Trains the BERT model and generates predictions on all logs</div>
+        <button class="btn btn-secondary" id="step2-btn" onclick="runStep2()" disabled style="width:100%;justify-content:center">
+          <span id="step2-spinner"></span> Run BERT Train
+        </button>
+        <div id="step2-msg" style="font-size:.72rem;margin-top:8px;display:none"></div>
+      </div>
+
+      <!-- Step 3: RCA -->
+      <div id="step3-box" style="border-radius:10px;padding:14px 16px;background:var(--s2);border:1px solid var(--border);transition:all .3s">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <span style="font-size:.68rem;font-weight:700;letter-spacing:1px;color:var(--muted)">STEP 3</span>
+          <span id="step3-badge" style="font-size:.62rem;padding:2px 7px;border-radius:4px;background:rgba(100,116,139,.15);color:#94a3b8;border:1px solid rgba(100,116,139,.3)">PENDING</span>
+        </div>
+        <div style="font-weight:800;font-size:.9rem;margin-bottom:4px">🔍 Root Cause Analysis</div>
+        <div style="font-size:.74rem;color:var(--muted);margin-bottom:10px">Matches predictions, ranks root causes and computes health score</div>
+        <button class="btn btn-primary" id="rcaBtn" onclick="runStep3()" disabled style="width:100%;justify-content:center">
+          <span id="rcaSpinner"></span> Run RCA
+        </button>
+        <div id="step3-msg" style="font-size:.72rem;margin-top:8px;display:none"></div>
+      </div>
+
+    </div>
+
+    <!-- Run All button -->
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <button class="btn btn-primary" id="runAllBtn" onclick="runFullPipeline()" disabled>
+        <span id="allSpinner"></span> ⚡ Run All 3 Steps Automatically
+      </button>
+      <span style="font-size:.76rem;color:var(--muted)">Runs Step 1 → 2 → 3 in sequence. Requires preprocessing to be done first.</span>
+    </div>
+    <div class="status-msg" id="rcaStatus"></div>
+  </div>
+
+  <!-- Health Score + Summary KPIs -->
+  <div class="g4" style="margin-bottom:18px" id="rcaKpis">
+    <div class="metric"><div class="val" id="rca-health" style="color:var(--acc)">—</div><div class="lbl">Health Score</div><div class="mbar"><div class="mbar-f" id="rca-health-bar" style="background:var(--acc)"></div></div></div>
+    <div class="metric"><div class="val" id="rca-accuracy" style="color:var(--acc2)">—</div><div class="lbl">Prediction Match %</div></div>
+    <div class="metric"><div class="val" id="rca-anomaly-rate" style="color:var(--err)">—</div><div class="lbl">Anomaly Rate</div></div>
+    <div class="metric"><div class="val" id="rca-critical" style="color:var(--err)">—</div><div class="lbl">Critical Issues</div></div>
+  </div>
+
+  <!-- System Status Banner -->
+  <div id="rcaStatusBanner" style="display:none;padding:14px 20px;border-radius:12px;margin-bottom:18px;display:none;align-items:center;gap:14px">
+    <span id="rcaBannerIcon" style="font-size:2rem"></span>
+    <div>
+      <div id="rcaBannerTitle" style="font-weight:800;font-size:1rem"></div>
+      <div id="rcaBannerSub" style="font-size:.8rem;color:var(--muted);margin-top:2px"></div>
+    </div>
+  </div>
+
+  <!-- Root Cause Cards -->
+  <div class="card" style="margin-bottom:18px">
+    <div class="card-title">🎯 Identified Root Causes — Ranked by Severity</div>
+    <div id="rcaCards">
+      <div class="empty"><div class="empty-icon">🔍</div><p>Click "Run Root Cause Analysis" to identify failure causes</p></div>
+    </div>
+  </div>
+
+  <!-- Evidence Table -->
+  <div class="card" style="display:none" id="rcaEvidenceSection">
+    <div class="card-title">📋 Log Evidence — Top Anomalous Entries per Cause</div>
+    <div id="rcaEvidence"></div>
+  </div>
+
+</div>
+<!-- ══════════════════ END PANEL 5 ══════════════════ -->
+
+</div><!-- /main -->
+
+<script>
+// ── STATE ──
+let currentFileId = null;
+let currentLogPage = 1;
+let currentProcPage = 1;
+let currentLogFilter = '';
+let charts = {};
+const COLORS = {
+  ERROR:'#ef4444',CRITICAL:'#dc2626',FATAL:'#991b1b',
+  WARN:'#f97316',WARNING:'#f97316',INFO:'#818cf8',
+  DEBUG:'#64748b',TRACE:'#475569'
+};
+
+// ── TAB SWITCHING ──
+function showTab(name, btn) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab,.nav-btn').forEach(t => t.classList.remove('active'));
+  document.getElementById('panel-'+name).classList.add('active');
+  document.getElementById('tab-'+name)?.classList.add('active');
+  btn?.classList.add('active');
+}
+
+// ── DRAG/DROP ──
+const dz = document.getElementById('dropZone');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('drag'));
+dz.addEventListener('drop', e => {
+  e.preventDefault(); dz.classList.remove('drag');
+  const f = e.dataTransfer.files[0];
+  if (f) { document.getElementById('fileInput').files = e.dataTransfer.files; onFileSelected(f); }
+});
+document.getElementById('fileInput').addEventListener('change', e => {
+  if (e.target.files[0]) onFileSelected(e.target.files[0]);
+});
+function onFileSelected(f) {
+  document.getElementById('dropZone').querySelector('h3').textContent = f.name;
+  document.getElementById('dropZone').querySelector('p').textContent = `${(f.size/1024).toFixed(1)} KB · Click Upload to continue`;
+  document.getElementById('uploadBtn').disabled = false;
+}
+
+// ── STATUS MESSAGES ──
+function showStatus(id, msg, type='info') {
+  const el = document.getElementById(id);
+  el.textContent = msg; el.className = `status-msg status-${type}`;
+  el.style.display = 'block';
+  if (type === 'ok') setTimeout(() => el.style.display='none', 4000);
+}
+
+// ── UPLOAD FILE ──
+async function uploadFile() {
+  const fi = document.getElementById('fileInput');
+  if (!fi.files[0]) return;
+  const btn = document.getElementById('uploadBtn');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Uploading...';
+  showStatus('uploadStatus', 'Parsing log file...', 'info');
+  const fd = new FormData(); fd.append('file', fi.files[0]);
+  try {
+    const r = await fetch('/api/upload', {method:'POST', body:fd});
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error);
+    currentFileId = d.file_id;
+    showStatus('uploadStatus', `✅ Parsed ${d.total_entries.toLocaleString()} log entries`, 'ok');
+    updateMetrics(d.level_counts, d.total_entries);
+    loadLogs();
+    loadHistory();
+    enableButtons();
+  } catch(e) {
+    showStatus('uploadStatus', '❌ ' + e.message, 'err');
+  }
+  btn.disabled = false; btn.innerHTML = '⬆️ Upload & Parse';
+}
+
+// ── GENERATE SAMPLE ──
+async function generateSample() {
+  const btn = event.target;
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Generating...';
+  try {
+    const r = await fetch('/api/generate-sample', {method:'POST'});
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error);
+    currentFileId = d.file_id;
+    showStatus('uploadStatus', `✅ Generated ${d.total_entries.toLocaleString()} sample log entries`, 'ok');
+    document.getElementById('dropZone').querySelector('h3').textContent = 'sample_logs.log';
+    document.getElementById('dropZone').querySelector('p').textContent = `${d.total_entries} entries generated`;
+    updateMetrics(d.level_counts, d.total_entries);
+    loadLogs();
+    loadHistory();
+    enableButtons();
+  } catch(e) {
+    showStatus('uploadStatus', '❌ ' + e.message, 'err');
+  }
+  btn.disabled = false; btn.innerHTML = '🎲 Generate Sample Logs';
+}
+
+function enableButtons() {
+  document.getElementById('preprocessBtn').disabled = false;
+  document.getElementById('vizBtn').disabled = false;
+  document.getElementById('rcaBtn').disabled = false;
+  document.getElementById('step1-btn').disabled = false;
+  document.getElementById('runAllBtn').disabled = false;
+}
+
+// ── METRICS ──
+function updateMetrics(lc, total) {
+  const err = (lc.ERROR||0)+(lc.CRITICAL||0)+(lc.FATAL||0);
+  const warn = lc.WARN||lc.WARNING||0;
+  const info = (lc.INFO||0)+(lc.DEBUG||0)+(lc.TRACE||0);
+  document.getElementById('m-total').textContent = total.toLocaleString();
+  document.getElementById('m-err').textContent = err.toLocaleString();
+  document.getElementById('m-warn').textContent = warn.toLocaleString();
+  document.getElementById('m-info').textContent = info.toLocaleString();
+  setTimeout(() => {
+    document.getElementById('mb-total').style.width='100%';
+    document.getElementById('mb-err').style.width=(err/total*100)+'%';
+    document.getElementById('mb-warn').style.width=(warn/total*100)+'%';
+    document.getElementById('mb-info').style.width=(info/total*100)+'%';
+  }, 100);
+  document.getElementById('kpi-total').textContent = total.toLocaleString();
+  document.getElementById('kpi-errors').textContent = err.toLocaleString();
+}
+
+// ── LOAD LOGS ──
+async function loadLogs(page=1) {
+  if (!currentFileId) return;
+  currentLogPage = page;
+  const r = await fetch(`/api/logs/${currentFileId}?page=${page}&per_page=30&level=${currentLogFilter}`);
+  const d = await r.json();
+  renderLogTable(d.logs, d.total, page, 30);
+}
+
+function renderLogTable(logs, total, page, pp) {
+  const tbody = document.getElementById('logTableBody');
+  if (!logs.length) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:30px;color:var(--muted)">No logs match filter</td></tr>'; return; }
+  tbody.innerHTML = logs.map(l => `
+    <tr>
+      <td style="color:var(--muted)">${l.line_number}</td>
+      <td style="color:var(--muted)">${(l.timestamp||'').substring(11,19)||'—'}</td>
+      <td><span class="tag l${l.level}">${l.level}</span></td>
+      <td style="color:var(--muted)">${l.source||'—'}</td>
+      <td style="max-width:340px;overflow:hidden;text-overflow:ellipsis">${escHtml(l.message||l.raw_text||'')}</td>
+      <td>${l.error_code?`<span style="color:var(--acc3);font-family:'Space Mono',monospace;font-size:.66rem">${l.error_code}</span>`:'—'}</td>
+    </tr>`).join('');
+  renderPag('logPag', page, Math.ceil(total/pp), p => loadLogs(p), total);
+}
+
+function filterLogs(level, btn) {
+  currentLogFilter = level;
+  document.querySelectorAll('#panel-collection .filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  loadLogs(1);
+}
+
+// ── PREPROCESS ──
+async function runPreprocess() {
+  if (!currentFileId) return;
+  const btn = document.getElementById('preprocessBtn');
+  btn.disabled = true; document.getElementById('ppSpinner').className='spinner';
+  showStatus('ppStatus','Running TF-IDF + Isolation Forest anomaly detection...','info');
+  try {
+    const r = await fetch(`/api/preprocess/${currentFileId}`, {method:'POST'});
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error);
+    document.getElementById('sampleRaw').textContent = d.sample_before;
+    document.getElementById('sampleClean').textContent = d.sample_after;
+    document.getElementById('kpi-anomalies').textContent = d.anomaly_count.toLocaleString();
+    showStatus('ppStatus',`✅ Preprocessed ${d.processed} logs — ${d.anomaly_count} anomalies detected`,'ok');
+    renderPPStats(d);
+    loadProcessed(1);
+    loadAnomalyPanel();
+  } catch(e) {
+    showStatus('ppStatus','❌ '+e.message,'err');
+  }
+  btn.disabled = false; document.getElementById('ppSpinner').className='';
+}
+
+function renderPPStats(d) {
+  const tokens = d.top_tokens||[];
+  const pct = d.processed ? Math.round((d.anomaly_count/d.processed)*100) : 0;
+  document.getElementById('ppStats').innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+      <div class="metric"><div class="val" style="color:var(--acc)">${d.processed.toLocaleString()}</div><div class="lbl">Processed</div></div>
+      <div class="metric"><div class="val" style="color:var(--err)">${d.anomaly_count.toLocaleString()}</div><div class="lbl">Anomalies (${pct}%)</div></div>
+    </div>
+    <div style="font-size:.68rem;color:var(--muted);font-weight:700;letter-spacing:1px;margin-bottom:8px">TOP TOKENS AFTER CLEANING</div>
+    <div style="display:flex;flex-wrap:wrap;gap:5px">
+      ${tokens.slice(0,15).map(([w,c])=>`<span style="display:inline-block;padding:2px 8px;border-radius:5px;background:rgba(0,245,196,.08);color:var(--acc);border:1px solid rgba(0,245,196,.15);font-family:'Space Mono',monospace;font-size:.68rem">${w}<span style="color:var(--muted);margin-left:4px">${c}</span></span>`).join('')}
+    </div>`;
+}
+
+async function loadProcessed(page=1) {
+  if (!currentFileId) return;
+  currentProcPage = page;
+  const r = await fetch(`/api/processed/${currentFileId}?page=${page}`);
+  const d = await r.json();
+  const tbody = document.getElementById('procTableBody');
+  if (!d.logs.length) { tbody.innerHTML='<tr><td colspan="7" style="text-align:center;padding:30px;color:var(--muted)">No processed data</td></tr>'; return; }
+  tbody.innerHTML = d.logs.map(l => {
+    const toks = l.tokens ? (()=>{try{return JSON.parse(l.tokens)}catch{return[]}})() : [];
+    const sc = (l.anomaly_score||0).toFixed(3);
+    const scoreColor = l.is_anomaly ? 'var(--err)' : 'var(--ok)';
+    return `<tr>
+      <td style="color:var(--muted)">${l.id}</td>
+      <td><span class="tag l${l.level}">${l.level}</span></td>
+      <td style="max-width:280px;overflow:hidden;text-overflow:ellipsis;font-family:'Space Mono',monospace;font-size:.68rem;color:var(--acc)">${escHtml(l.cleaned_text||'—')}</td>
+      <td style="color:var(--acc2);font-family:'Space Mono',monospace">${l.token_count||0}</td>
+      <td style="color:var(--muted)">${l.removed_count||0}</td>
+      <td class="${l.is_anomaly?'anomaly-yes':'anomaly-no'}">${l.is_anomaly?'⚠ YES':'✓ NO'}</td>
+      <td>
+        <div class="ascore">
+          <div class="ascore-bar"><div class="ascore-f" style="width:${Math.round((l.anomaly_score||0)*100)}%;background:${scoreColor}"></div></div>
+          <span style="font-family:'Space Mono',monospace;font-size:.65rem;color:${scoreColor}">${sc}</span>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+  renderPag('procPag', page, Math.ceil(d.total/30), p=>loadProcessed(p), d.total);
+}
+
+// ── VISUALIZATION ──
+async function loadViz() {
+  if (!currentFileId) return;
+  const btn = document.getElementById('vizBtn');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Computing...';
+  showStatus('vizStatus','Fetching chart data...','info');
+  try {
+    const r = await fetch(`/api/visualize/${currentFileId}`);
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error||'Error');
+    showStatus('vizStatus','✅ All charts generated from real data','ok');
+    renderVizKpis(d);
+    renderBarChart(d.top_errors);
+    renderDoughnut(d.level_distribution);
+    renderLine(d.hourly_trend);
+    renderWordCloud(d.word_frequency);
+    renderSourceChart(d.source_distribution);
+  } catch(e) {
+    showStatus('vizStatus','❌ '+e.message,'err');
+  }
+  btn.disabled=false; btn.innerHTML='📊 Regenerate Charts';
+}
+
+function renderVizKpis(d) {
+  const an = d.anomaly_summary||{};
+  document.getElementById('vizKpis').innerHTML = `
+    <div class="metric"><div class="val" style="color:var(--acc)">${(an.total||0).toLocaleString()}</div><div class="lbl">Processed</div></div>
+    <div class="metric"><div class="val" style="color:var(--err)">${(an.anomalies||0).toLocaleString()}</div><div class="lbl">Anomalies</div></div>
+    <div class="metric"><div class="val" style="color:var(--ok)">${(an.normal||0).toLocaleString()}</div><div class="lbl">Normal</div></div>
+    <div class="metric"><div class="val" style="color:var(--acc3)">${an.total?(Math.round((an.anomalies/an.total)*100))+'%':'—'}</div><div class="lbl">Anomaly Rate</div></div>`;
+}
+
+function destroyChart(id) { if(charts[id]){charts[id].destroy();delete charts[id];} }
+const cOpts = { color:'#64748b', borderColor:'rgba(255,255,255,.05)' };
+
+function renderBarChart(data) {
+  destroyChart('bar');
+  if (!data||!data.length) return;
+  const ctx = document.getElementById('barChart').getContext('2d');
+  charts['bar'] = new Chart(ctx, {
+    type:'bar',
+    data:{
+      labels: data.map(d=>d.word),
+      datasets:[{
+        label:'Count', data:data.map(d=>d.count),
+        backgroundColor: ctx2 => {
+          const g=ctx2.chart.ctx.createLinearGradient(0,0,0,200);
+          g.addColorStop(0,'rgba(0,245,196,.8)'); g.addColorStop(1,'rgba(0,245,196,.15)');
+          return g;
+        },
+        borderColor:'rgba(0,245,196,.5)',borderWidth:1,borderRadius:5
+      }]
+    },
+    options:{responsive:true,plugins:{legend:{display:false},...cOpts},
+      scales:{x:{grid:{color:'rgba(255,255,255,.03)'},ticks:{color:'#64748b',font:{size:10}}},
+              y:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#64748b'},beginAtZero:true}}}
+  });
+}
+
+function renderDoughnut(ld) {
+  destroyChart('dough');
+  if (!ld||!Object.keys(ld).length) return;
+  const labels=Object.keys(ld), vals=Object.values(ld);
+  const cols=labels.map(l=>({ERROR:'rgba(239,68,68,.75)',CRITICAL:'rgba(220,38,38,.8)',
+    FATAL:'rgba(153,27,27,.8)',WARN:'rgba(249,115,22,.75)',WARNING:'rgba(249,115,22,.75)',
+    INFO:'rgba(99,102,241,.7)',DEBUG:'rgba(100,116,139,.6)',TRACE:'rgba(71,85,105,.5)'}[l]||'rgba(100,116,139,.5)'));
+  const ctx = document.getElementById('doughnutChart').getContext('2d');
+  charts['dough'] = new Chart(ctx,{
+    type:'doughnut',
+    data:{labels,datasets:[{data:vals,backgroundColor:cols,borderColor:cols.map(c=>c.replace(/[\d.]+\)$/,'1)')),borderWidth:2,hoverOffset:8}]},
+    options:{responsive:true,cutout:'62%',plugins:{legend:{position:'right',labels:{color:'#94a3b8',font:{size:11},padding:10}}}}
+  });
+}
+
+function renderLine(hourly) {
+  destroyChart('line');
+  const counts = hourly.map(h=>h.count);
+  const mx = Math.max(...counts);
+  const threshold = mx * 0.7;
+  const ctx = document.getElementById('lineChart').getContext('2d');
+  charts['line'] = new Chart(ctx,{
+    type:'line',
+    data:{
+      labels: hourly.map(h=>`${String(h.hour).padStart(2,'0')}:00`),
+      datasets:[
+        {label:'Log Volume',data:counts,borderColor:'rgba(0,245,196,.9)',
+          backgroundColor:ctx2=>{const g=ctx2.chart.ctx.createLinearGradient(0,0,0,200);
+            g.addColorStop(0,'rgba(0,245,196,.3)');g.addColorStop(1,'rgba(0,245,196,0)');return g;},
+          fill:true,tension:.4,
+          pointBackgroundColor:counts.map(v=>v>threshold?'#ef4444':'rgba(0,245,196,.8)'),
+          pointRadius:counts.map(v=>v>threshold?6:3)},
+        {label:'Spike Threshold',data:Array(24).fill(threshold),
+          borderColor:'rgba(239,68,68,.35)',borderDash:[5,4],borderWidth:1.5,pointRadius:0,fill:false}
+      ]
+    },
+    options:{responsive:true,plugins:{legend:{labels:{color:'#94a3b8',font:{size:11}}}},
+      scales:{x:{grid:{color:'rgba(255,255,255,.03)'},ticks:{color:'#64748b',font:{size:10}}},
+              y:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#64748b'},beginAtZero:true}}}
+  });
+}
+
+function renderWordCloud(freq) {
+  const wc = document.getElementById('wordcloud');
+  wc.innerHTML = '';
+  if (!freq||!freq.length) { wc.innerHTML='<div class="empty"><p>No token data</p></div>'; return; }
+  const mx = freq[0].count;
+  const palette=['#00f5c4','#6366f1','#f59e0b','#ef4444','#f97316','#a78bfa','#34d399','#60a5fa'];
+  freq.forEach((f,i) => {
+    const el = document.createElement('span');
+    const sz = 0.6 + (f.count/mx)*1.3;
+    el.className='wc-w';
+    el.style.cssText=`font-size:${sz}rem;color:${palette[i%palette.length]};opacity:${0.5+f.count/mx*.5}`;
+    el.textContent=f.word;
+    el.title=`Frequency: ${f.count}`;
+    wc.appendChild(el);
+  });
+}
+
+function renderSourceChart(sources) {
+  destroyChart('src');
+  if (!sources||!sources.length) return;
+  const ctx = document.getElementById('srcChart').getContext('2d');
+  charts['src'] = new Chart(ctx,{
+    type:'bar',
+    data:{
+      labels:sources.map(s=>s.src),
+      datasets:[{label:'Log Count',data:sources.map(s=>s.cnt),
+        backgroundColor:'rgba(99,102,241,.6)',borderColor:'rgba(99,102,241,.9)',
+        borderWidth:1,borderRadius:5}]
+    },
+    options:{indexAxis:'y',responsive:true,plugins:{legend:{display:false}},
+      scales:{x:{grid:{color:'rgba(255,255,255,.03)'},ticks:{color:'#64748b',font:{size:10}},beginAtZero:true},
+              y:{grid:{display:false},ticks:{color:'#94a3b8',font:{size:10}}}}}
+  });
+}
+
+// ── ANOMALY PANEL ──
+async function loadAnomalyPanel() {
+  if (!currentFileId) return;
+  const r = await fetch(`/api/visualize/${currentFileId}`);
+  const d = await r.json();
+  const an = d.anomaly_summary||{};
+
+  document.getElementById('anomKpis').innerHTML=`
+    <div class="metric"><div class="val" style="color:var(--err)">${(an.anomalies||0)}</div><div class="lbl">Anomalies</div></div>
+    <div class="metric"><div class="val" style="color:var(--ok)">${(an.normal||0)}</div><div class="lbl">Normal</div></div>
+    <div class="metric"><div class="val" style="color:var(--acc3)">${an.total?(Math.round((an.anomalies/an.total)*100))+'%':'—'}</div><div class="lbl">Anomaly %</div></div>
+    <div class="metric"><div class="val" style="color:var(--acc2)">IF</div><div class="lbl">Model Used</div></div>`;
+
+  destroyChart('anom');
+  const ctx2 = document.getElementById('anomChart').getContext('2d');
+  charts['anom'] = new Chart(ctx2,{
+    type:'doughnut',
+    data:{
+      labels:['Normal','Anomaly'],
+      datasets:[{data:[an.normal||0,an.anomalies||0],
+        backgroundColor:['rgba(34,197,94,.6)','rgba(239,68,68,.7)'],
+        borderColor:['rgba(34,197,94,.9)','rgba(239,68,68,.9)'],borderWidth:2,hoverOffset:8}]
+    },
+    options:{responsive:true,cutout:'55%',plugins:{legend:{labels:{color:'#94a3b8',font:{size:12}}}}}
+  });
+
+  const al = document.getElementById('anomList');
+  if (!d.top_anomalies||!d.top_anomalies.length) {
+    al.innerHTML='<div class="empty"><div class="empty-icon">✅</div><p>No anomalies detected</p></div>'; return;
+  }
+  al.innerHTML = d.top_anomalies.map((a,i)=>`
+    <div style="padding:10px 12px;border-radius:8px;background:var(--s2);border-left:3px solid var(--err);margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+        <span class="tag l${a.level}">${a.level}</span>
+        <span style="font-family:'Space Mono',monospace;font-size:.64rem;color:var(--err)">score:${(a.anomaly_score||0).toFixed(3)}</span>
+      </div>
+      <div style="font-family:'Space Mono',monospace;font-size:.69rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(a.raw_text||'')}</div>
+    </div>`).join('');
+}
+
+// ── UPLOAD HISTORY ──
+async function loadHistory() {
+  const r = await fetch('/api/uploads');
+  const files = await r.json();
+  document.getElementById('kpi-files').textContent = files.length;
+  const hist = document.getElementById('uploadHistory');
+  if (!files.length) { hist.innerHTML='<div class="empty"><div class="empty-icon">📭</div><p>No files yet</p></div>'; return; }
+  hist.innerHTML = files.map(f=>`
+    <div class="hist-item ${f.id===currentFileId?'selected':''}" onclick="selectFile('${f.id}','${escHtml(f.file_name)}',${f.total_lines||0},${f.error_count||0},${f.warn_count||0},${f.info_count||0})">
+      <div>
+        <div class="hist-fname">${escHtml(f.file_name)}</div>
+        <div class="hist-meta">${f.total_lines||0} logs · ${new Date(f.uploaded_at).toLocaleTimeString()}</div>
+      </div>
+      <span class="hist-status s-${f.status||'ready'}">${f.status||'ready'}</span>
+      <button class="btn btn-danger" style="padding:4px 9px;font-size:.65rem" onclick="event.stopPropagation();deleteFile('${f.id}')">🗑</button>
+    </div>`).join('');
+}
+
+function selectFile(fid, fname, total, err, warn, info) {
+  currentFileId = fid;
+  document.getElementById('dropZone').querySelector('h3').textContent = fname;
+  document.getElementById('dropZone').querySelector('p').textContent = `${total} entries · click Upload to re-upload`;
+  updateMetrics({ERROR:err,WARN:warn,INFO:info}, total);
+  loadLogs(); loadHistory(); enableButtons();
+}
+
+async function deleteFile(fid) {
+  if (!confirm('Delete this file and all its data?')) return;
+  await fetch(`/api/delete/${fid}`,{method:'DELETE'});
+  if (currentFileId===fid) { currentFileId=null; }
+  loadHistory();
+}
+
+// ── PAGINATION ──
+function renderPag(id, page, total_pages, fn, total) {
+  const el = document.getElementById(id);
+  if (total_pages <= 1) { el.innerHTML=''; return; }
+  el.innerHTML=`
+    <button class="pag-btn" ${page<=1?'disabled':''} onclick="(${fn})(${page-1})">← Prev</button>
+    <span class="pag-info">Page ${page} / ${total_pages} · ${total} total</span>
+    <button class="pag-btn" ${page>=total_pages?'disabled':''} onclick="(${fn})(${page+1})">Next →</button>`;
+}
+
+// ── UTILS ──
+function escHtml(s) { return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+
+// ── ROOT CAUSE ANALYSIS PIPELINE ──
+
+function setStepState(stepNum, state, msg) {
+  // state: 'pending' | 'running' | 'done' | 'error'
+  const box    = document.getElementById(`step${stepNum}-box`);
+  const badge  = document.getElementById(`step${stepNum}-badge`);
+  const msgEl  = document.getElementById(`step${stepNum}-msg`);
+  const spin   = document.getElementById(stepNum === 3 ? 'rcaSpinner' : `step${stepNum}-spinner`);
+
+  const styles = {
+    pending: { border:'var(--border)',   badge:'background:rgba(100,116,139,.15);color:#94a3b8;border:1px solid rgba(100,116,139,.3)',  label:'PENDING' },
+    running: { border:'rgba(99,102,241,.5)', badge:'background:rgba(99,102,241,.15);color:#818cf8;border:1px solid rgba(99,102,241,.4)', label:'RUNNING' },
+    done:    { border:'rgba(0,245,196,.4)', badge:'background:rgba(0,245,196,.12);color:var(--acc);border:1px solid rgba(0,245,196,.35)', label:'✅ DONE' },
+    error:   { border:'rgba(239,68,68,.4)', badge:'background:rgba(239,68,68,.12);color:var(--err);border:1px solid rgba(239,68,68,.35)', label:'❌ ERROR' },
+  };
+  const s = styles[state] || styles.pending;
+  box.style.borderColor = s.border.includes(':') ? s.border.split(':')[1] : s.border;
+  box.style.border = `1px solid ${s.border.includes('rgba') ? s.border : 'var(--border)'}`;
+  badge.style.cssText = s.badge;
+  badge.textContent = s.label;
+  spin.className = state === 'running' ? 'spinner' : '';
+  if (msg) {
+    msgEl.style.display = 'block';
+    msgEl.style.color = state === 'error' ? 'var(--err)' : state === 'done' ? 'var(--ok)' : '#818cf8';
+    msgEl.textContent = msg;
+  } else {
+    msgEl.style.display = 'none';
+  }
+}
+
+async function runStep1() {
+  if (!currentFileId) return false;
+  const btn = document.getElementById('step1-btn');
+  btn.disabled = true;
+  setStepState(1, 'running', 'Running validation...');
+  try {
+    const r = await fetch(`/api/validate/${currentFileId}`, { method: 'POST' });
+    const d = await r.json();
+    if (!r.ok || d.error) throw new Error(d.error || 'Validation failed');
+    const report = d.report || d.validation_report || d;
+    const acc = report && report.cv_mean_acc
+      ? (report.cv_mean_acc * 100).toFixed(1) + '% CV accuracy'
+      : 'Validation complete';
+    setStepState(1, 'done', '✅ ' + acc);
+    document.getElementById('step2-btn').disabled = false;
+    return true;
+  } catch(e) {
+    setStepState(1, 'error', e.message);
+    btn.disabled = false;
+    return false;
+  }
+}
+
+async function runStep2() {
+  if (!currentFileId) return false;
+  const btn = document.getElementById('step2-btn');
+  btn.disabled = true;
+  setStepState(2, 'running', 'Training BERT model... please wait 30-60 seconds');
+  try {
+    const r = await fetch(`/api/bert-train/${currentFileId}`, { method: 'POST' });
+    const d = await r.json();
+    if (!r.ok || d.error) throw new Error(d.error || 'BERT training failed');
+    const res = d.results || d;
+    const acc = res.accuracy ? (res.accuracy * 100).toFixed(1) + '% accuracy' : 'Training complete';
+    const mode = res.mode ? ' (' + res.mode + ' mode)' : '';
+    setStepState(2, 'done', '✅ ' + acc + mode);
+    document.getElementById('rcaBtn').disabled = false;
+    return true;
+  } catch(e) {
+    setStepState(2, 'error', e.message);
+    btn.disabled = false;
+    return false;
+  }
+}
+
+async function runStep3() {
+  if (!currentFileId) return false;
+  const btn = document.getElementById('rcaBtn');
+  btn.disabled = true;
+  setStepState(3, 'running', 'Analyzing root causes...');
+  showStatus('rcaStatus', '⏳ Running root cause analysis...', 'info');
+  try {
+    const r = await fetch(`/api/rca/${currentFileId}`);
+    const d = await r.json();
+    if (!r.ok || d.error) throw new Error(d.error || 'RCA failed');
+    setStepState(3, 'done', '✅ ' + (d.root_causes ? d.root_causes.length : 0) + ' root causes found');
+    showStatus('rcaStatus', '✅ Root cause analysis complete!', 'ok');
+    renderRCAKpis(d.outcome_summary);
+    renderRCABanner(d.outcome_summary);
+    renderRCACards(d.root_causes);
+    renderRCAEvidence(d.root_causes);
+    return true;
+  } catch(e) {
+    setStepState(3, 'error', e.message);
+    showStatus('rcaStatus', '❌ ' + e.message, 'err');
+    btn.disabled = false;
+    return false;
+  }
+}
+
+async function runFullPipeline() {
+  if (!currentFileId) {
+    showStatus('rcaStatus', '❌ No file selected. Upload and preprocess a log file first.', 'err');
+    return;
+  }
+  const btn = document.getElementById('runAllBtn');
+  btn.disabled = true;
+  document.getElementById('allSpinner').className = 'spinner';
+
+  // Reset all steps
+  setStepState(1, 'pending', '');
+  setStepState(2, 'pending', '');
+  setStepState(3, 'pending', '');
+  document.getElementById('step1-btn').disabled = true;
+  document.getElementById('step2-btn').disabled = true;
+  document.getElementById('rcaBtn').disabled = true;
+
+  showStatus('rcaStatus', '⚡ Step 1: Running Validation...', 'info');
+  const ok1 = await runStep1();
+  if (ok1 !== true) {
+    showStatus('rcaStatus', '❌ Step 1 (Validation) failed. Check that you ran Preprocessing first.', 'err');
+    btn.disabled = false;
+    document.getElementById('allSpinner').className = '';
+    return;
+  }
+
+  showStatus('rcaStatus', '⚡ Step 2: Training BERT... please wait...', 'info');
+  const ok2 = await runStep2();
+  if (ok2 !== true) {
+    showStatus('rcaStatus', '❌ Step 2 (BERT Training) failed.', 'err');
+    btn.disabled = false;
+    document.getElementById('allSpinner').className = '';
+    return;
+  }
+
+  showStatus('rcaStatus', '⚡ Step 3: Running Root Cause Analysis...', 'info');
+  await runStep3();
+
+  btn.disabled = false;
+  document.getElementById('allSpinner').className = '';
+}
+
+async function runRCA() {
+  await runStep3();
+}
+
+async function loadRCA() {
+  if (currentFileId) {
+    document.getElementById('step1-btn').disabled = false;
+    document.getElementById('runAllBtn').disabled = false;
+  }
+  if (!currentFileId) return;
+  try {
+    const r = await fetch(`/api/pipeline-status/${currentFileId}`);
+    if (!r.ok) return;
+    const d = await r.json();
+    const m = d.modules || {};
+    if (m.module4_validation) { setStepState(1, 'done', '✅ Already completed'); document.getElementById('step2-btn').disabled = false; }
+    if (m.module5_bert)       { setStepState(2, 'done', '✅ Already completed'); document.getElementById('rcaBtn').disabled = false; }
+    if (m.module6_rca)        {
+      setStepState(3, 'done', '✅ Already completed');
+      const r2 = await fetch(`/api/rca-report/${currentFileId}`);
+      if (r2.ok) {
+        const d2 = await r2.json();
+        renderRCAKpis(d2.outcome_summary);
+        renderRCABanner(d2.outcome_summary);
+        renderRCACards(d2.root_causes);
+        renderRCAEvidence(d2.root_causes);
+      }
+    }
+  } catch(e) { /* pipeline-status not critical */ }
+}
+
+const RCA_EXPLANATIONS = {
+  NET_TIMEOUT:   "Logs indicate repeated network timeouts or dropped connections. The system failed to communicate with remote hosts within expected time limits. This is often caused by overloaded network infrastructure, misconfigured timeouts, or unreachable services.",
+  DB_ERROR:      "Database query failures or transaction conflicts detected. Errors suggest the database layer is experiencing deadlocks, constraint violations, or connection pool exhaustion. Check DB server health, query performance, and connection limits.",
+  AUTH_FAILURE:  "Authentication or authorization errors found in logs. Users or services are being denied access — this may indicate expired tokens, revoked credentials, or a misconfigured permissions policy. Security audit recommended.",
+  MEM_ERROR:     "Memory exhaustion or heap overflow events detected. The application is consuming more RAM than available, leading to Out-of-Memory kills or GC pressure. Profile memory usage and check for leaks.",
+  DISK_IO:       "Disk read/write errors or storage capacity issues found. The system may be hitting I/O limits, running out of disk space, or experiencing file system corruption. Monitor disk health and free space.",
+  SERVICE_CRASH: "Critical service crashes or abnormal process terminations detected. Processes are exiting unexpectedly (segfault, SIGKILL, abort). This typically points to unhandled exceptions, resource exhaustion, or kernel-level issues.",
+  CONFIG_ERROR:  "Configuration or startup failures detected. The application cannot load required settings, find expected files, or parse configuration correctly. Review config files, environment variables, and missing dependencies.",
+  HTTP_ERROR:    "HTTP request failures or API errors logged. Remote endpoints are returning error status codes or timing out. May indicate downstream service degradation, rate limiting, or incorrect API usage.",
+  UNKNOWN_ANOMALY:"Anomalous log patterns detected that do not match known failure categories. These entries deviate statistically from normal behavior. Manual investigation of flagged logs is recommended."
+};
+
+const SEV_COLORS = {
+  CRITICAL: 'var(--err)',
+  HIGH:     'var(--warn)',
+  MEDIUM:   'var(--acc3)',
+  LOW:      'var(--muted)'
+};
+
+async function loadRCA() {
+  // Enable button if a file is selected
+  if (currentFileId) document.getElementById('rcaBtn').disabled = false;
+}
+
+async function runRCA() {
+  if (!currentFileId) { showStatus('rcaStatus','❌ No file selected. Upload a log file first.','err'); return; }
+  const btn = document.getElementById('rcaBtn');
+  btn.disabled = true;
+  document.getElementById('rcaSpinner').className = 'spinner';
+  showStatus('rcaStatus', '⏳ Running BERT prediction matching + root cause analysis...', 'info');
+
+  try {
+    const r = await fetch(`/api/rca/${currentFileId}`);
+    const d = await r.json();
+    if (!r.ok || d.error) throw new Error(d.error || 'RCA failed');
+
+    showStatus('rcaStatus', '✅ Root cause analysis complete!', 'ok');
+    renderRCAKpis(d.outcome_summary);
+    renderRCABanner(d.outcome_summary);
+    renderRCACards(d.root_causes);
+    renderRCAEvidence(d.root_causes);
+  } catch(e) {
+    showStatus('rcaStatus', '❌ ' + e.message + '. Make sure you ran Module 4 (Validation) and Module 5 (BERT Train) first.', 'err');
+  }
+  btn.disabled = false;
+  document.getElementById('rcaSpinner').className = '';
+}
+
+function renderRCAKpis(summary) {
+  if (!summary) return;
+  const health = summary.health_score || 0;
+  document.getElementById('rca-health').textContent = health + '/100';
+  document.getElementById('rca-accuracy').textContent = (summary.prediction_accuracy || 0) + '%';
+  document.getElementById('rca-anomaly-rate').textContent = (summary.anomaly_rate || 0) + '%';
+  document.getElementById('rca-critical').textContent = summary.critical_issues || 0;
+  setTimeout(() => {
+    document.getElementById('rca-health-bar').style.width = health + '%';
+  }, 100);
+}
+
+function renderRCABanner(summary) {
+  if (!summary) return;
+  const health = summary.health_score || 0;
+  const banner = document.getElementById('rcaStatusBanner');
+  const icon = document.getElementById('rcaBannerIcon');
+  const title = document.getElementById('rcaBannerTitle');
+  const sub = document.getElementById('rcaBannerSub');
+
+  let bg, iconTxt, titleTxt;
+  if (health >= 80) {
+    bg = 'rgba(34,197,94,.1)'; iconTxt = '✅'; titleTxt = 'System Status: HEALTHY';
+  } else if (health >= 50) {
+    bg = 'rgba(245,158,11,.1)'; iconTxt = '⚠️'; titleTxt = 'System Status: WARNING — Attention Required';
+  } else {
+    bg = 'rgba(239,68,68,.1)'; iconTxt = '🚨'; titleTxt = 'System Status: CRITICAL — Immediate Action Required';
+  }
+
+  banner.style.cssText = `display:flex;padding:14px 20px;border-radius:12px;margin-bottom:18px;align-items:center;gap:14px;background:${bg};border:1px solid rgba(255,255,255,.08)`;
+  icon.textContent = iconTxt;
+  title.textContent = titleTxt;
+  sub.textContent = `Health Score: ${health}/100 · Top Issue: ${summary.top_root_cause || 'None'} · ${summary.anomalies_detected || 0} anomalies in ${summary.total_logs_analyzed || 0} logs analyzed`;
+}
+
+function renderRCACards(causes) {
+  const container = document.getElementById('rcaCards');
+  if (!causes || !causes.length) {
+    container.innerHTML = '<div class="empty"><div class="empty-icon">✅</div><p>No anomalies detected — system appears healthy</p></div>';
+    return;
+  }
+
+  container.innerHTML = causes.map(c => {
+    const explanation = RCA_EXPLANATIONS[c.cause_id] || RCA_EXPLANATIONS['UNKNOWN_ANOMALY'];
+    const sevColor = SEV_COLORS[c.severity] || 'var(--muted)';
+    const confWidth = Math.min(100, c.confidence || 0);
+
+    return `
+    <div class="rca-card sev-${c.severity}">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:8px">
+        <div>
+          <div class="rca-rank">ROOT CAUSE #${c.rank}</div>
+          <div class="rca-label" style="color:${sevColor}">${c.cause_label}</div>
+        </div>
+        <span class="tag sev-badge-${c.severity}" style="height:fit-content">${c.severity}</span>
+      </div>
+
+      <div class="rca-explain">${explanation}</div>
+
+      <div class="rca-meta">
+        <span>Frequency: <b>${c.frequency} logs</b></span>
+        <span>Confidence: <b>${c.confidence}%</b></span>
+        <span>First Seen: <b>${c.first_seen !== 'N/A' ? (c.first_seen||'N/A').substring(0,16) : 'N/A'}</b></span>
+        <span>Last Seen: <b>${c.last_seen !== 'N/A' ? (c.last_seen||'N/A').substring(0,16) : 'N/A'}</b></span>
+        <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:200px">
+          <span style="white-space:nowrap">Confidence:</span>
+          <div class="conf-bar-bg">
+            <div class="conf-bar-f" style="width:${confWidth}%;background:${sevColor}"></div>
+          </div>
+          <b>${c.confidence}%</b>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderRCAEvidence(causes) {
+  if (!causes || !causes.length) return;
+  const section = document.getElementById('rcaEvidenceSection');
+  const container = document.getElementById('rcaEvidence');
+  section.style.display = 'block';
+
+  const evItems = causes.flatMap(c =>
+    (c.evidence || []).map(e => ({
+      cause: c.cause_label,
+      severity: c.severity,
+      raw_id: e.raw_id,
+      text: e.text,
+      confidence: e.confidence
+    }))
+  ).slice(0, 15);
+
+  if (!evItems.length) { section.style.display='none'; return; }
+
+  container.innerHTML = `
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>LOG ID</th><th>ROOT CAUSE</th><th>SEVERITY</th><th>LOG TEXT (EXCERPT)</th><th>CONFIDENCE</th></tr></thead>
+        <tbody>
+          ${evItems.map(e => `
+            <tr>
+              <td style="font-family:'Space Mono',monospace;color:var(--acc)">#${e.raw_id||'—'}</td>
+              <td style="color:var(--txt);font-size:.72rem">${escHtml(e.cause)}</td>
+              <td><span class="tag sev-badge-${e.severity}">${e.severity}</span></td>
+              <td style="font-family:'Space Mono',monospace;font-size:.67rem;color:var(--muted);max-width:340px;overflow:hidden;text-overflow:ellipsis">${escHtml(e.text||'')}</td>
+              <td style="font-family:'Space Mono',monospace;font-size:.68rem;color:var(--acc2)">${((e.confidence||0)*100).toFixed(1)}%</td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+
+</script>
+</body>
+</html>
