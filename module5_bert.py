@@ -174,7 +174,7 @@ class BertLite:
                "loaded","registered","serving","received","sent","processed",
                "cached","stored","saved","created","updated","stable"}
 
-    def __init__(self, hidden=64, seed=42):
+    def __init__(self, hidden=32, seed=42):
         self.hidden=hidden; self.seed=seed
         self.W1=self.b1=self.W2=self.b2=None
         self.vocab={}; self.idf={}; self.threshold=0.5
@@ -184,7 +184,7 @@ class BertLite:
         df = Counter(); N = len(all_toks_list)
         for toks in all_toks_list: df.update(set(toks))
         self.idf = {t: math.log((1+N)/(1+df[t]))+1.0 for t in df}
-        top = sorted(self.idf, key=self.idf.get, reverse=True)[:200]
+        top = sorted(self.idf, key=self.idf.get, reverse=True)[:80]  # reduced from 200→80
         self.vocab = {t: i for i, t in enumerate(top)}
 
     def _feats(self, toks):
@@ -219,13 +219,14 @@ class BertLite:
         self.W2 = [random.gauss(0,s2) for _ in range(self.hidden)]
         self.b2 = 0.0
 
-    def fit(self, train_rows, epochs=25, lr=0.005):
+    def fit(self, train_rows, epochs=8, lr=0.01):
         all_toks = [get_tokens(r) for r in train_rows]
         self._build_vocab(all_toks)
         X = [self._feats(t) for t in all_toks]
         y = [float(r["label"]) for r in train_rows]
         self._init(len(X[0]))
         print(f"[Module 5 BERT-lite] Training {len(X)} samples, {len(X[0])} features, {epochs} epochs")
+        best_loss = float('inf'); patience = 0
         for ep in range(epochs):
             idx = list(range(len(X))); random.shuffle(idx); tl = 0.0
             for i in idx:
@@ -241,11 +242,20 @@ class BertLite:
                         dh = do*self.W2[k]
                         for j in range(len(xi)): self.W1[k][j] -= lr*dh*xi[j]
                         self.b1[k] -= lr*dh
-            if (ep+1)%5==0: print(f"[Module 5 BERT-lite] Epoch {ep+1:2d}/{epochs} Loss={tl/len(X):.4f}")
-        # find best threshold
+            avg_loss = tl/len(X)
+            print(f"[Module 5 BERT-lite] Epoch {ep+1:2d}/{epochs} Loss={avg_loss:.4f}")
+            # Early stopping
+            if avg_loss < best_loss - 0.001:
+                best_loss = avg_loss; patience = 0
+            else:
+                patience += 1
+                if patience >= 3:
+                    print(f"[Module 5 BERT-lite] Early stop at epoch {ep+1}")
+                    break
+        # find best threshold on training data
         probs = [self._fwd(xi)[0] for xi in X]
         best_t, best_f1 = 0.5, 0.0
-        for t in [i/20 for i in range(5,16)]:
+        for t in [i/10 for i in range(3, 8)]:
             p = [1 if v>t else 0 for v in probs]
             tp=sum(1 for a,b in zip(p,y) if a==1 and b==1)
             fp=sum(1 for a,b in zip(p,y) if a==1 and b==0)
@@ -311,8 +321,8 @@ def run_bert_training(file_id: str) -> dict:
             file_id, train_rows, test_rows)
     else:
         mode  = "bert_lite"
-        model = BertLite(hidden=64, seed=42)
-        model.fit(train_rows, epochs=25, lr=0.005)
+        model = BertLite(hidden=32, seed=42)
+        model.fit(train_rows, epochs=8, lr=0.01)
         mp    = os.path.join(MODEL_DIR, f"bertlite_{file_id}.json")
         model.save(mp)
         _MODELS[file_id] = model
