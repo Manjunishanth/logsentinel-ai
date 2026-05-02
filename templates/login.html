@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sign In — LogSentinel AI</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#040710;--s1:#0b1221;--s2:#101828;--s3:#1a2438;
+  --acc:#00f5c4;--acc2:#6366f1;--acc3:#f59e0b;
+  --err:#ef4444;--warn:#f97316;--ok:#22c55e;
+  --txt:#e2e8f0;--muted:#64748b;--border:rgba(0,245,196,0.1);
+  --glow:0 0 24px rgba(0,245,196,0.12);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%}
+body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--txt);
+  min-height:100vh;display:flex;flex-direction:column;overflow-x:hidden;position:relative}
+
+/* Grid background */
+body::before{content:'';position:fixed;inset:0;
+  background-image:linear-gradient(rgba(0,245,196,0.025) 1px,transparent 1px),
+                   linear-gradient(90deg,rgba(0,245,196,0.025) 1px,transparent 1px);
+  background-size:44px 44px;pointer-events:none;z-index:0}
+
+/* Ambient glow orbs */
+body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:
+    radial-gradient(circle at 20% 30%, rgba(0,245,196,.10), transparent 40%),
+    radial-gradient(circle at 80% 70%, rgba(99,102,241,.10), transparent 45%);}
+
+/* HEADER (matches dashboard) */
+header{position:sticky;top:0;z-index:200;height:58px;
+  display:flex;align-items:center;justify-content:space-between;padding:0 2rem;
+  background:rgba(4,7,16,0.95);backdrop-filter:blur(20px);border-bottom:1px solid var(--border)}
+.logo{display:flex;align-items:center;gap:9px;font-weight:800;font-size:1rem;letter-spacing:-0.3px}
+.logo-pulse{width:9px;height:9px;border-radius:50%;background:var(--acc);
+  box-shadow:0 0 10px var(--acc);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.8)}}
+.live-badge{display:flex;align-items:center;gap:5px;font-family:'Space Mono',monospace;
+  font-size:.68rem;color:var(--acc)}
+.live-dot{width:5px;height:5px;border-radius:50%;background:var(--acc);animation:pulse 1.5s infinite}
+
+/* MAIN */
+.main{flex:1;display:flex;align-items:center;justify-content:center;
+  padding:48px 24px;position:relative;z-index:1}
+
+/* AUTH SHELL */
+.auth-shell{width:100%;max-width:920px;display:grid;grid-template-columns:1.05fr 1fr;
+  gap:0;background:rgba(11,18,33,.6);border:1px solid var(--border);
+  border-radius:18px;overflow:hidden;backdrop-filter:blur(14px);
+  box-shadow:0 30px 80px -20px rgba(0,0,0,.6),var(--glow);
+  animation:shellIn .55s cubic-bezier(.22,.9,.32,1) both}
+@keyframes shellIn{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+
+/* LEFT — pitch panel */
+.pitch{padding:42px 38px;background:
+   linear-gradient(150deg,rgba(0,245,196,.06),transparent 55%),
+   linear-gradient(330deg,rgba(99,102,241,.07),transparent 50%),
+   var(--s1);
+  position:relative;display:flex;flex-direction:column;justify-content:space-between;
+  border-right:1px solid var(--border);min-height:560px}
+.pitch::before{content:'';position:absolute;inset:0;pointer-events:none;
+  background-image:linear-gradient(rgba(0,245,196,0.04) 1px,transparent 1px),
+                   linear-gradient(90deg,rgba(0,245,196,0.04) 1px,transparent 1px);
+  background-size:32px 32px;mask-image:radial-gradient(circle at 50% 50%,#000 30%,transparent 75%)}
+.pitch-tag{position:relative;display:inline-block;padding:4px 14px;border-radius:20px;
+  background:rgba(99,102,241,.15);border:1px solid rgba(99,102,241,.3);
+  font-size:.65rem;font-weight:700;letter-spacing:2px;color:var(--acc2);
+  text-transform:uppercase;align-self:flex-start;margin-bottom:18px}
+.pitch h1{position:relative;font-size:2.1rem;font-weight:800;line-height:1.08;
+  background:linear-gradient(135deg,#fff 20%,var(--acc) 60%,var(--acc2));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  margin-bottom:14px}
+.pitch p{position:relative;font-size:.88rem;color:var(--muted);line-height:1.7;max-width:340px}
+
+/* mini stats / receipt */
+.receipt{position:relative;margin-top:32px;background:rgba(4,7,16,.55);
+  border:1px solid var(--border);border-radius:12px;padding:16px 18px;
+  font-family:'Space Mono',monospace;font-size:.72rem}
+.receipt-head{display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:10px;color:var(--muted);font-size:.64rem;letter-spacing:1.2px}
+.receipt-head .live-badge{font-size:.62rem}
+.r-row{display:flex;justify-content:space-between;padding:5px 0;color:var(--txt)}
+.r-row span:first-child{color:var(--muted)}
+.r-row b{color:var(--acc);font-weight:700}
+.r-row.warn b{color:var(--warn)}
+.r-row.err b{color:var(--err)}
+
+.feature-row{position:relative;display:flex;flex-direction:column;gap:9px;margin-top:24px}
+.feat{display:flex;align-items:center;gap:10px;font-size:.78rem;color:var(--txt)}
+.feat .dot{width:6px;height:6px;border-radius:50%;background:var(--acc);box-shadow:0 0 8px var(--acc)}
+
+/* RIGHT — form */
+.form-wrap{padding:46px 44px;display:flex;flex-direction:column;justify-content:center;
+  background:linear-gradient(180deg,var(--s1),#070b16)}
+.eyebrow{font-size:.66rem;font-weight:700;letter-spacing:1.6px;color:var(--muted);
+  text-transform:uppercase;margin-bottom:6px}
+.form-title{font-size:1.6rem;font-weight:800;margin-bottom:6px;letter-spacing:-.3px}
+.form-sub{font-size:.82rem;color:var(--muted);margin-bottom:26px}
+
+/* Flash messages — matches .status-msg */
+.flash-stack{display:flex;flex-direction:column;gap:8px;margin-bottom:18px}
+.status-msg{padding:10px 14px;border-radius:8px;font-size:.78rem;font-weight:600;
+  display:flex;align-items:center;gap:9px;animation:flashIn .35s ease}
+@keyframes flashIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+.status-ok{background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);color:var(--ok)}
+.status-err{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);color:var(--err)}
+.status-info{background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.3);color:#818cf8}
+
+/* Field */
+.field{margin-bottom:14px;position:relative}
+.field label{display:block;font-size:.66rem;font-weight:700;letter-spacing:1.2px;
+  color:var(--muted);text-transform:uppercase;margin-bottom:7px}
+.input-wrap{position:relative}
+.input-wrap .ico{position:absolute;left:13px;top:50%;transform:translateY(-50%);
+  font-size:.95rem;opacity:.55;pointer-events:none;transition:opacity .2s,color .2s}
+input[type=text],input[type=email],input[type=password]{
+  width:100%;background:var(--s2);border:1px solid var(--border);color:var(--txt);
+  padding:12px 14px 12px 38px;border-radius:9px;font-family:'Space Mono',monospace;
+  font-size:.86rem;outline:none;transition:all .2s;letter-spacing:.2px}
+input::placeholder{color:#3a4759;font-weight:400}
+input:focus{border-color:var(--acc);box-shadow:0 0 0 3px rgba(0,245,196,.12),var(--glow);
+  background:#0d1525}
+input:focus + .ico, .input-wrap:focus-within .ico{opacity:1;color:var(--acc)}
+
+/* Show password toggle */
+.pw-toggle{position:absolute;right:10px;top:50%;transform:translateY(-50%);
+  background:transparent;border:none;color:var(--muted);cursor:pointer;
+  font-family:'Space Mono',monospace;font-size:.62rem;font-weight:700;
+  letter-spacing:1px;padding:4px 8px;border-radius:5px;transition:color .15s}
+.pw-toggle:hover{color:var(--acc)}
+
+/* Row: remember + forgot */
+.row{display:flex;justify-content:space-between;align-items:center;margin:6px 0 22px}
+.checkbox{display:flex;align-items:center;gap:9px;cursor:pointer;user-select:none}
+.checkbox input{position:absolute;opacity:0;pointer-events:none}
+.cbox{width:16px;height:16px;border-radius:4px;border:1px solid var(--border);
+  background:var(--s2);display:inline-flex;align-items:center;justify-content:center;
+  transition:all .18s;flex-shrink:0}
+.checkbox input:checked + .cbox{background:var(--acc);border-color:var(--acc);
+  box-shadow:0 0 10px rgba(0,245,196,.45)}
+.cbox::after{content:'';width:8px;height:4px;border-left:2px solid #000;
+  border-bottom:2px solid #000;transform:rotate(-45deg) translate(1px,-1px) scale(0);
+  transition:transform .18s}
+.checkbox input:checked + .cbox::after{transform:rotate(-45deg) translate(1px,-1px) scale(1)}
+.checkbox span{font-size:.78rem;color:var(--txt);font-weight:600}
+.forgot{font-size:.74rem;color:#00d4a8;text-decoration:none;font-weight:600;
+  transition:color .15s}
+.forgot:hover{color:#fff}
+/* Submit button — same vocab as .btn-primary */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  padding:13px 20px;border-radius:9px;font-weight:700;font-size:.88rem;
+  cursor:pointer;transition:all .2s;border:none;font-family:'Syne',sans-serif;
+  letter-spacing:.4px;width:100%}
+.btn-primary{background:var(--acc);color:#000;box-shadow:0 6px 24px -6px rgba(0,245,196,.5)}
+.btn-primary:hover{background:#00d4a8;transform:translateY(-1px);
+  box-shadow:0 10px 30px -6px rgba(0,245,196,.65)}
+.btn-primary:active{transform:translateY(0)}
+.btn:disabled{opacity:.65;cursor:not-allowed;transform:none!important}
+.spinner{display:inline-block;width:14px;height:14px;
+  border:2px solid rgba(0,0,0,.25);border-top-color:#000;border-radius:50%;
+  animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Divider */
+.divider{display:flex;align-items:center;gap:12px;margin:22px 0;
+  color:var(--muted);font-size:.66rem;letter-spacing:1.6px;font-weight:700}
+.divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--border)}
+
+/* Footer link */
+.alt{text-align:center;font-size:.82rem;color:var(--muted);font-weight:600}
+.alt a{color:var(--acc);text-decoration:none;font-weight:700;
+  border-bottom:1px solid transparent;transition:border-color .15s}
+.alt a:hover{border-bottom-color:var(--acc)}
+
+/* Page footer */
+.page-footer{padding:14px 2rem;text-align:center;font-family:'Space Mono',monospace;
+  font-size:.65rem;color:var(--muted);letter-spacing:1px;position:relative;z-index:1}
+
+/* Responsive */
+@media(max-width:760px){
+  .auth-shell{grid-template-columns:1fr;max-width:480px}
+  .pitch{min-height:auto;padding:32px 28px;border-right:none;
+    border-bottom:1px solid var(--border)}
+  .pitch h1{font-size:1.6rem}
+  .form-wrap{padding:32px 28px}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-pulse"></div>
+    LogSentinel <span style="color:var(--acc)">AI</span>
+  </div>
+  <div class="live-badge"><div class="live-dot"></div>SECURE GATEWAY</div>
+</header>
+
+<main class="main">
+  <div class="auth-shell">
+
+    <!-- LEFT: pitch + live receipt -->
+    <aside class="pitch">
+      <div>
+        <div class="pitch-tag">Intelligent Log Analysis</div>
+        <h1>Detect anomalies before they become incidents.</h1>
+        <p>Sign in to access your real-time log analysis dashboard — TF-IDF + Isolation Forest, BERT-driven root-cause analysis, all on your own data.</p>
+
+        <div class="feature-row">
+          <div class="feat"><span class="dot"></span> Real-time anomaly detection</div>
+          <div class="feat"><span class="dot" style="background:var(--acc2);box-shadow:0 0 8px var(--acc2)"></span> Root-cause ranking with BERT</div>
+          <div class="feat"><span class="dot" style="background:var(--acc3);box-shadow:0 0 8px var(--acc3)"></span> Live visualizations &amp; spike detection</div>
+        </div>
+      </div>
+
+      <div class="receipt">
+        <div class="receipt-head">
+          <span>SYSTEM · LIVE FEED</span>
+          <div class="live-badge"><div class="live-dot"></div>ONLINE</div>
+        </div>
+        <div class="r-row"><span>Logs ingested (24h)</span><b>1,284,109</b></div>
+        <div class="r-row warn"><span>Warnings detected</span><b>2,481</b></div>
+        <div class="r-row err"><span>Anomalies flagged</span><b>147</b></div>
+        <div class="r-row"><span>Health score</span><b>92.4 / 100</b></div>
+      </div>
+    </aside>
+
+    <!-- RIGHT: login form -->
+    <section class="form-wrap">
+      <div class="eyebrow">// Authentication</div>
+      <h2 class="form-title">Welcome back.</h2>
+      <p class="form-sub">Sign in to continue to your dashboard.</p>
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <div class="flash-stack">
+            {% for cat, msg in messages %}
+              <div class="status-msg status-{{ 'ok' if cat == 'ok' else ('err' if cat == 'err' else 'info') }}">
+                <span>{{ '✓' if cat == 'ok' else ('⚠' if cat == 'err' else 'ⓘ') }}</span>
+                <span>{{ msg }}</span>
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+
+      <form method="POST" action="{{ url_for('login') }}" id="loginForm" novalidate>
+        <div class="field">
+          <label for="identifier">Username or Email</label>
+          <div class="input-wrap">
+            <input type="text" id="identifier" name="identifier" required
+                   autocomplete="username" placeholder="you@example.com"
+                   value="{{ request.form.identifier or '' }}">
+            <span class="ico">◈</span>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="password">Password</label>
+          <div class="input-wrap">
+            <input type="password" id="password" name="password" required
+                   autocomplete="current-password" placeholder="••••••••" minlength="8">
+            <span class="ico">⬢</span>
+            <button type="button" class="pw-toggle" onclick="togglePw('password',this)">SHOW</button>
+          </div>
+        </div>
+
+        <div class="row">
+          <label class="checkbox">
+            <input type="checkbox" name="remember" value="1">
+            <span class="cbox"></span>
+            <span>Remember me</span>
+          </label>
+         <a href="{{ url_for('forgot_password') }}" class="forgot">Forgot Password?</a>
+        </div>
+
+        <button type="submit" class="btn btn-primary" id="submitBtn">
+          <span id="btnLabel">⏵ Sign In</span>
+        </button>
+      </form>
+
+      <div class="divider">NEW HERE?</div>
+
+      <div class="alt">
+        Don't have an account?
+        <a href="{{ url_for('signup') }}">Create one →</a>
+      </div>
+    </section>
+  </div>
+</main>
+
+<div class="page-footer">
+  © LogSentinel AI · Encrypted session · v2.4
+</div>
+
+<script>
+function togglePw(id, btn){
+  const el = document.getElementById(id);
+  const showing = el.type === 'text';
+  el.type = showing ? 'password' : 'text';
+  btn.textContent = showing ? 'SHOW' : 'HIDE';
+}
+
+document.getElementById('loginForm').addEventListener('submit', function(e){
+  const btn = document.getElementById('submitBtn');
+  const lbl = document.getElementById('btnLabel');
+  btn.disabled = true;
+  lbl.innerHTML = '<span class="spinner"></span> Authenticating…';
+});
+</script>
+</body>
+</html>

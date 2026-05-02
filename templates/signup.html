@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Create Account — LogSentinel AI</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#040710;--s1:#0b1221;--s2:#101828;--s3:#1a2438;
+  --acc:#00f5c4;--acc2:#6366f1;--acc3:#f59e0b;
+  --err:#ef4444;--warn:#f97316;--ok:#22c55e;
+  --txt:#e2e8f0;--muted:#64748b;--border:rgba(0,245,196,0.1);
+  --glow:0 0 24px rgba(0,245,196,0.12);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%}
+body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--txt);
+  min-height:100vh;display:flex;flex-direction:column;overflow-x:hidden;position:relative}
+
+body::before{content:'';position:fixed;inset:0;
+  background-image:linear-gradient(rgba(0,245,196,0.025) 1px,transparent 1px),
+                   linear-gradient(90deg,rgba(0,245,196,0.025) 1px,transparent 1px);
+  background-size:44px 44px;pointer-events:none;z-index:0}
+body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:
+    radial-gradient(circle at 80% 20%, rgba(0,245,196,.10), transparent 40%),
+    radial-gradient(circle at 15% 85%, rgba(99,102,241,.10), transparent 45%);}
+
+header{position:sticky;top:0;z-index:200;height:58px;
+  display:flex;align-items:center;justify-content:space-between;padding:0 2rem;
+  background:rgba(4,7,16,0.95);backdrop-filter:blur(20px);border-bottom:1px solid var(--border)}
+.logo{display:flex;align-items:center;gap:9px;font-weight:800;font-size:1rem;letter-spacing:-0.3px}
+.logo-pulse{width:9px;height:9px;border-radius:50%;background:var(--acc);
+  box-shadow:0 0 10px var(--acc);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.8)}}
+.live-badge{display:flex;align-items:center;gap:5px;font-family:'Space Mono',monospace;
+  font-size:.68rem;color:var(--acc)}
+.live-dot{width:5px;height:5px;border-radius:50%;background:var(--acc);animation:pulse 1.5s infinite}
+
+.main{flex:1;display:flex;align-items:center;justify-content:center;
+  padding:48px 24px;position:relative;z-index:1}
+
+.auth-shell{width:100%;max-width:920px;display:grid;grid-template-columns:1fr 1.05fr;
+  gap:0;background:rgba(11,18,33,.6);border:1px solid var(--border);
+  border-radius:18px;overflow:hidden;backdrop-filter:blur(14px);
+  box-shadow:0 30px 80px -20px rgba(0,0,0,.6),var(--glow);
+  animation:shellIn .55s cubic-bezier(.22,.9,.32,1) both}
+@keyframes shellIn{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+
+/* LEFT — form */
+.form-wrap{padding:42px 38px;display:flex;flex-direction:column;justify-content:center;
+  background:linear-gradient(180deg,var(--s1),#070b16);min-height:600px}
+.eyebrow{font-size:.66rem;font-weight:700;letter-spacing:1.6px;color:var(--muted);
+  text-transform:uppercase;margin-bottom:6px}
+.form-title{font-size:1.6rem;font-weight:800;margin-bottom:6px;letter-spacing:-.3px}
+.form-sub{font-size:.82rem;color:var(--muted);margin-bottom:22px}
+
+.flash-stack{display:flex;flex-direction:column;gap:8px;margin-bottom:16px}
+.status-msg{padding:10px 14px;border-radius:8px;font-size:.78rem;font-weight:600;
+  display:flex;align-items:center;gap:9px;animation:flashIn .35s ease}
+@keyframes flashIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+.status-ok{background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);color:var(--ok)}
+.status-err{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);color:var(--err)}
+.status-info{background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.3);color:#818cf8}
+
+.field{margin-bottom:13px;position:relative}
+.field label{display:block;font-size:.66rem;font-weight:700;letter-spacing:1.2px;
+  color:var(--muted);text-transform:uppercase;margin-bottom:7px}
+.input-wrap{position:relative}
+.input-wrap .ico{position:absolute;left:13px;top:50%;transform:translateY(-50%);
+  font-size:.95rem;opacity:.55;pointer-events:none;transition:opacity .2s,color .2s}
+input[type=text],input[type=email],input[type=password]{
+  width:100%;background:var(--s2);border:1px solid var(--border);color:var(--txt);
+  padding:12px 14px 12px 38px;border-radius:9px;font-family:'Space Mono',monospace;
+  font-size:.86rem;outline:none;transition:all .2s;letter-spacing:.2px}
+input::placeholder{color:#3a4759;font-weight:400}
+input:focus{border-color:var(--acc);box-shadow:0 0 0 3px rgba(0,245,196,.12),var(--glow);
+  background:#0d1525}
+.input-wrap:focus-within .ico{opacity:1;color:var(--acc)}
+
+.pw-toggle{position:absolute;right:10px;top:50%;transform:translateY(-50%);
+  background:transparent;border:none;color:var(--muted);cursor:pointer;
+  font-family:'Space Mono',monospace;font-size:.62rem;font-weight:700;
+  letter-spacing:1px;padding:4px 8px;border-radius:5px;transition:color .15s}
+.pw-toggle:hover{color:var(--acc)}
+
+.pw-meter{display:flex;gap:4px;margin-top:8px}
+.pw-bar{flex:1;height:3px;background:var(--s3);border-radius:2px;overflow:hidden;transition:background .25s}
+.pw-bar.on-1{background:var(--err)}
+.pw-bar.on-2{background:var(--warn)}
+.pw-bar.on-3{background:var(--acc3)}
+.pw-bar.on-4{background:var(--acc)}
+.pw-hint{display:flex;justify-content:space-between;align-items:center;
+  margin-top:6px;font-size:.66rem;font-family:'Space Mono',monospace;color:var(--muted)}
+.pw-hint .strength{font-weight:700;color:var(--muted);transition:color .25s}
+.pw-hint .strength.s-1{color:var(--err)}
+.pw-hint .strength.s-2{color:var(--warn)}
+.pw-hint .strength.s-3{color:var(--acc3)}
+.pw-hint .strength.s-4{color:var(--acc)}
+
+.match-hint{font-size:.66rem;font-family:'Space Mono',monospace;
+  color:var(--muted);margin-top:6px;display:flex;align-items:center;gap:6px}
+.match-hint.match{color:var(--ok)}
+.match-hint.nomatch{color:var(--err)}
+
+/* ── TERMS CHECKBOX AREA ─────────────────────────────────────────── */
+.terms-wrap{margin:16px 0 20px;padding:14px 16px;border-radius:10px;
+  background:rgba(4,7,16,.5);border:1px solid var(--border);
+  transition:border-color .2s}
+.terms-wrap.shake{animation:shake .4s ease}
+.terms-wrap.required-highlight{border-color:var(--err);
+  box-shadow:0 0 0 3px rgba(239,68,68,.12)}
+@keyframes shake{
+  0%,100%{transform:translateX(0)}
+  20%{transform:translateX(-6px)}
+  40%{transform:translateX(6px)}
+  60%{transform:translateX(-4px)}
+  80%{transform:translateX(4px)}
+}
+
+.checkbox{display:flex;align-items:flex-start;gap:10px;cursor:pointer;user-select:none}
+.checkbox input{position:absolute;opacity:0;pointer-events:none}
+.cbox{width:18px;height:18px;border-radius:5px;border:1px solid var(--border);
+  background:var(--s2);display:inline-flex;align-items:center;justify-content:center;
+  transition:all .18s;flex-shrink:0;margin-top:1px}
+.checkbox input:checked + .cbox{background:var(--acc);border-color:var(--acc);
+  box-shadow:0 0 10px rgba(0,245,196,.45)}
+.cbox::after{content:'';width:8px;height:4px;border-left:2px solid #000;
+  border-bottom:2px solid #000;transform:rotate(-45deg) translate(1px,-1px) scale(0);
+  transition:transform .18s}
+.checkbox input:checked + .cbox::after{transform:rotate(-45deg) translate(1px,-1px) scale(1)}
+.checkbox-text{font-size:.76rem;color:var(--txt);font-weight:600;line-height:1.6}
+.checkbox-text a{color:var(--acc);text-decoration:none;border-bottom:1px solid transparent;
+  transition:border-color .15s,color .15s}
+.checkbox-text a:hover{border-bottom-color:var(--acc);color:#00ffcc}
+
+/* Required warning under checkbox */
+.terms-warning{display:none;margin-top:8px;font-size:.68rem;font-family:'Space Mono',monospace;
+  color:var(--err);align-items:center;gap:6px}
+.terms-warning.visible{display:flex}
+
+/* ── SUBMIT BUTTON ───────────────────────────────────────────────── */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  padding:13px 20px;border-radius:9px;font-weight:700;font-size:.88rem;
+  cursor:pointer;transition:all .2s;border:none;font-family:'Syne',sans-serif;
+  letter-spacing:.4px;width:100%}
+.btn-primary{background:var(--acc);color:#000;box-shadow:0 6px 24px -6px rgba(0,245,196,.5)}
+.btn-primary:hover{background:#00d4a8;transform:translateY(-1px);
+  box-shadow:0 10px 30px -6px rgba(0,245,196,.65)}
+.btn-primary:active{transform:translateY(0)}
+.btn:disabled{opacity:.65;cursor:not-allowed;transform:none!important}
+.spinner{display:inline-block;width:14px;height:14px;
+  border:2px solid rgba(0,0,0,.25);border-top-color:#000;border-radius:50%;
+  animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.divider{display:flex;align-items:center;gap:12px;margin:20px 0;
+  color:var(--muted);font-size:.66rem;letter-spacing:1.6px;font-weight:700}
+.divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--border)}
+
+.alt{text-align:center;font-size:.82rem;color:var(--muted);font-weight:600}
+.alt a{color:var(--acc);text-decoration:none;font-weight:700;
+  border-bottom:1px solid transparent;transition:border-color .15s}
+.alt a:hover{border-bottom-color:var(--acc)}
+
+/* RIGHT — pitch */
+.pitch{padding:42px 38px;background:
+   linear-gradient(150deg,rgba(99,102,241,.07),transparent 55%),
+   linear-gradient(330deg,rgba(0,245,196,.06),transparent 50%),
+   var(--s1);
+  position:relative;display:flex;flex-direction:column;justify-content:space-between;
+  border-left:1px solid var(--border);min-height:600px}
+.pitch::before{content:'';position:absolute;inset:0;pointer-events:none;
+  background-image:linear-gradient(rgba(0,245,196,0.04) 1px,transparent 1px),
+                   linear-gradient(90deg,rgba(0,245,196,0.04) 1px,transparent 1px);
+  background-size:32px 32px;mask-image:radial-gradient(circle at 50% 50%,#000 30%,transparent 75%)}
+.pitch-tag{position:relative;display:inline-block;padding:4px 14px;border-radius:20px;
+  background:rgba(0,245,196,.12);border:1px solid rgba(0,245,196,.3);
+  font-size:.65rem;font-weight:700;letter-spacing:2px;color:var(--acc);
+  text-transform:uppercase;align-self:flex-start;margin-bottom:18px}
+.pitch h1{position:relative;font-size:1.95rem;font-weight:800;line-height:1.1;
+  background:linear-gradient(135deg,#fff 20%,var(--acc) 60%,var(--acc2));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  margin-bottom:14px}
+.pitch p{position:relative;font-size:.86rem;color:var(--muted);line-height:1.7;max-width:340px}
+
+.steps{position:relative;margin-top:24px;display:flex;flex-direction:column;gap:10px}
+.step{display:flex;align-items:flex-start;gap:12px;padding:12px 14px;
+  background:rgba(4,7,16,.4);border:1px solid var(--border);border-radius:10px}
+.step-num{flex-shrink:0;width:28px;height:28px;border-radius:50%;
+  background:rgba(0,245,196,.1);border:1px solid rgba(0,245,196,.25);
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Space Mono',monospace;font-size:.66rem;font-weight:700;color:var(--acc)}
+.step-body{}
+.step-title{font-size:.8rem;font-weight:700;color:var(--txt);margin-bottom:2px}
+.step-sub{font-size:.72rem;color:var(--muted)}
+
+.pitch-foot{position:relative;display:flex;justify-content:space-between;align-items:center;
+  padding:12px 14px;background:rgba(4,7,16,.5);border:1px solid var(--border);
+  border-radius:10px;font-family:'Space Mono',monospace;font-size:.64rem;color:var(--muted)}
+.pitch-foot b{color:var(--acc)}
+
+.page-footer{padding:14px 2rem;text-align:center;font-family:'Space Mono',monospace;
+  font-size:.65rem;color:var(--muted);letter-spacing:1px;position:relative;z-index:1}
+
+@media(max-width:760px){
+  .auth-shell{grid-template-columns:1fr;max-width:480px}
+  .pitch{min-height:auto;padding:32px 28px;border-left:none;
+    border-top:1px solid var(--border)}
+  .form-wrap{padding:32px 28px;min-height:auto}
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   MODAL OVERLAY (Terms & Privacy)
+══════════════════════════════════════════════════════════════════ */
+.modal-overlay{
+  position:fixed;inset:0;z-index:1000;
+  background:rgba(2,4,10,.88);backdrop-filter:blur(8px);
+  display:flex;align-items:center;justify-content:center;
+  padding:24px;opacity:0;pointer-events:none;transition:opacity .25s ease}
+.modal-overlay.open{opacity:1;pointer-events:all}
+
+.modal{width:100%;max-width:680px;max-height:85vh;
+  background:var(--s1);border:1px solid var(--border);border-radius:16px;
+  display:flex;flex-direction:column;overflow:hidden;
+  box-shadow:0 40px 100px -20px rgba(0,0,0,.8),var(--glow);
+  transform:translateY(20px) scale(.97);transition:transform .25s ease}
+.modal-overlay.open .modal{transform:translateY(0) scale(1)}
+
+.modal-header{padding:20px 24px 16px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.modal-header h2{font-size:1.05rem;font-weight:800;letter-spacing:-.2px}
+.modal-tag{font-size:.6rem;font-weight:700;letter-spacing:2px;color:var(--acc2);
+  background:rgba(99,102,241,.12);border:1px solid rgba(99,102,241,.25);
+  padding:3px 10px;border-radius:20px;text-transform:uppercase}
+.modal-close{background:rgba(255,255,255,.05);border:1px solid var(--border);
+  color:var(--muted);width:30px;height:30px;border-radius:6px;cursor:pointer;
+  font-size:1rem;display:flex;align-items:center;justify-content:center;
+  transition:all .15s;font-family:monospace}
+.modal-close:hover{background:rgba(239,68,68,.15);border-color:rgba(239,68,68,.4);color:var(--err)}
+
+.modal-body{padding:24px;overflow-y:auto;flex:1;
+  scrollbar-width:thin;scrollbar-color:var(--border) transparent}
+.modal-body::-webkit-scrollbar{width:4px}
+.modal-body::-webkit-scrollbar-track{background:transparent}
+.modal-body::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+
+/* Modal content typography */
+.modal-body h3{font-size:.82rem;font-weight:800;color:var(--acc);
+  letter-spacing:1.5px;text-transform:uppercase;margin:20px 0 8px}
+.modal-body h3:first-child{margin-top:0}
+.modal-body p{font-size:.8rem;color:var(--muted);line-height:1.8;margin-bottom:10px}
+.modal-body ul{padding-left:18px;margin-bottom:10px}
+.modal-body ul li{font-size:.8rem;color:var(--muted);line-height:1.8;margin-bottom:4px}
+.modal-body strong{color:var(--txt)}
+.modal-body .highlight{background:rgba(0,245,196,.06);border-left:3px solid var(--acc);
+  padding:10px 14px;border-radius:0 8px 8px 0;margin:12px 0;font-size:.78rem;
+  color:var(--txt);line-height:1.7}
+
+.modal-footer{padding:16px 24px;border-top:1px solid var(--border);flex-shrink:0;
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  background:rgba(4,7,16,.4)}
+.modal-footer p{font-size:.7rem;color:var(--muted);font-family:'Space Mono',monospace}
+.modal-footer .btn-accept{display:inline-flex;align-items:center;gap:8px;
+  padding:10px 22px;background:var(--acc);color:#000;border:none;border-radius:8px;
+  font-family:'Syne',sans-serif;font-weight:700;font-size:.82rem;cursor:pointer;
+  transition:all .2s;white-space:nowrap}
+.modal-footer .btn-accept:hover{background:#00d4a8;transform:translateY(-1px)}
+.modal-footer .btn-decline{display:inline-flex;align-items:center;gap:8px;
+  padding:10px 18px;background:transparent;color:var(--muted);
+  border:1px solid var(--border);border-radius:8px;
+  font-family:'Syne',sans-serif;font-weight:700;font-size:.82rem;cursor:pointer;
+  transition:all .2s}
+.modal-footer .btn-decline:hover{border-color:var(--err);color:var(--err)}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-pulse"></div>
+    LogSentinel <span style="color:var(--acc)">AI</span>
+  </div>
+  <div class="live-badge"><div class="live-dot"></div>SECURE GATEWAY</div>
+</header>
+
+<!-- ══ TERMS OF SERVICE MODAL ══════════════════════════════════════════ -->
+<div class="modal-overlay" id="termsModal" role="dialog" aria-modal="true" aria-labelledby="termsTitle">
+  <div class="modal">
+    <div class="modal-header">
+      <div style="display:flex;align-items:center;gap:12px">
+        <h2 id="termsTitle">Terms of Service</h2>
+        <span class="modal-tag">Legal · v1.0</span>
+      </div>
+      <button class="modal-close" onclick="closeModal('termsModal')" aria-label="Close">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="highlight">
+        By creating an account, you agree to these Terms. Please read them carefully before proceeding.
+      </div>
+
+      <h3>1. Acceptance of Terms</h3>
+      <p>By accessing or using LogSentinel AI, you agree to be bound by these Terms of Service. If you do not agree to these terms, you may not use the service.</p>
+
+      <h3>2. Use of Service</h3>
+      <p>LogSentinel AI is provided for log analysis and anomaly detection purposes. You agree to use the service only for lawful purposes and in accordance with these terms.</p>
+      <ul>
+        <li>You must be at least 13 years old to use this service.</li>
+        <li>You are responsible for maintaining the security of your account credentials.</li>
+        <li>You must not upload malicious files or attempt to exploit the system.</li>
+        <li>You must not share your account with others.</li>
+      </ul>
+
+      <h3>3. Data and Log Files</h3>
+      <p>Log files you upload are processed solely for the purpose of providing analysis results. We do not use your log data to train our models or share it with third parties.</p>
+      <ul>
+        <li><strong>Your data remains yours.</strong> You retain full ownership of all uploaded files.</li>
+        <li>Uploaded files may be stored temporarily for processing and are deleted after analysis.</li>
+        <li>Do not upload files containing personally identifiable information (PII) without proper anonymization.</li>
+      </ul>
+
+      <h3>4. Account Responsibility</h3>
+      <p>You are responsible for all activity that occurs under your account. You must notify us immediately of any unauthorized use of your account.</p>
+
+      <h3>5. Service Availability</h3>
+      <p>We strive to maintain high availability but do not guarantee uninterrupted access. LogSentinel AI may be temporarily unavailable for maintenance or upgrades.</p>
+
+      <h3>6. Intellectual Property</h3>
+      <p>The LogSentinel AI platform, including its ML models, UI, and algorithms, is the intellectual property of the developers. You may not copy, reverse-engineer, or redistribute any part of the service.</p>
+
+      <h3>7. Limitation of Liability</h3>
+      <p>LogSentinel AI is provided "as is" without warranties of any kind. We are not liable for any decisions made based on the analysis results produced by the system.</p>
+
+      <h3>8. Changes to Terms</h3>
+      <p>We reserve the right to update these Terms at any time. Continued use of the service after changes constitutes acceptance of the new terms.</p>
+
+      <h3>9. Contact</h3>
+      <p>For questions about these terms, contact us through the platform's support channels.</p>
+    </div>
+    <div class="modal-footer">
+      <p>You must accept to create an account.</p>
+      <div style="display:flex;gap:10px">
+        <button class="btn-decline" onclick="declineTerms()">✕ Decline</button>
+        <button class="btn-accept" onclick="acceptTerms()">✓ I Accept</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ PRIVACY POLICY MODAL ════════════════════════════════════════════ -->
+<div class="modal-overlay" id="privacyModal" role="dialog" aria-modal="true" aria-labelledby="privacyTitle">
+  <div class="modal">
+    <div class="modal-header">
+      <div style="display:flex;align-items:center;gap:12px">
+        <h2 id="privacyTitle">Privacy Policy</h2>
+        <span class="modal-tag">Privacy · v1.0</span>
+      </div>
+      <button class="modal-close" onclick="closeModal('privacyModal')" aria-label="Close">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="highlight">
+        Your privacy matters. This policy explains what data we collect, why we collect it, and how we protect it.
+      </div>
+
+      <h3>1. Information We Collect</h3>
+      <p>We collect only what is necessary to provide the service:</p>
+      <ul>
+        <li><strong>Account data:</strong> Username and email address provided during registration.</li>
+        <li><strong>Log files:</strong> Files you upload for analysis — processed and not permanently stored.</li>
+        <li><strong>Usage data:</strong> Basic request logs (IP address, timestamps) for security and debugging.</li>
+      </ul>
+
+      <h3>2. How We Use Your Data</h3>
+      <ul>
+        <li>To authenticate your account and maintain session security.</li>
+        <li>To process and analyze your uploaded log files.</li>
+        <li>To send password reset emails when requested by you.</li>
+        <li>To detect and prevent abuse or unauthorized access.</li>
+      </ul>
+
+      <h3>3. Data Storage and Security</h3>
+      <p>Your password is never stored in plain text — it is hashed using <strong>werkzeug's pbkdf2:sha256</strong> algorithm before storage. Reset tokens are cryptographically signed and expire after 1 hour.</p>
+      <ul>
+        <li>All data is stored locally in an SQLite database on the application server.</li>
+        <li>We do not use third-party analytics, advertising, or tracking services.</li>
+        <li>Session data is encrypted using Flask's secret key.</li>
+      </ul>
+
+      <h3>4. Data Sharing</h3>
+      <p>We do not sell, rent, or share your personal data with any third parties. Your log files are never shared outside the system.</p>
+
+      <h3>5. Email Communications</h3>
+      <p>We only send emails when you explicitly request them — for example, password reset emails. We do not send marketing emails or newsletters.</p>
+
+      <h3>6. Your Rights</h3>
+      <ul>
+        <li><strong>Access:</strong> You can view your account information at any time.</li>
+        <li><strong>Deletion:</strong> You may request deletion of your account and all associated data.</li>
+        <li><strong>Correction:</strong> You can update your account information through the platform.</li>
+      </ul>
+
+      <h3>7. Cookies</h3>
+      <p>LogSentinel AI uses a single session cookie to keep you logged in. No tracking or advertising cookies are used.</p>
+
+      <h3>8. Changes to This Policy</h3>
+      <p>We may update this Privacy Policy from time to time. Any changes will be noted in the platform.</p>
+
+      <h3>9. Contact</h3>
+      <p>For privacy-related questions or data deletion requests, contact us through the platform's support channels.</p>
+    </div>
+    <div class="modal-footer">
+      <p>You must accept to create an account.</p>
+      <div style="display:flex;gap:10px">
+        <button class="btn-decline" onclick="declineTerms()">✕ Decline</button>
+        <button class="btn-accept" onclick="acceptTerms()">✓ I Accept</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<main class="main">
+  <div class="auth-shell">
+
+    <!-- LEFT: signup form -->
+    <section class="form-wrap">
+      <div class="eyebrow">// New Account</div>
+      <h2 class="form-title">Create account.</h2>
+      <p class="form-sub">Join LogSentinel AI — free forever for core analysis.</p>
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <div class="flash-stack">
+            {% for cat, msg in messages %}
+              <div class="status-msg status-{{ 'ok' if cat == 'ok' else ('err' if cat == 'err' else 'info') }}">
+                <span>{{ '✓' if cat == 'ok' else ('⚠' if cat == 'err' else 'ⓘ') }}</span>
+                <span>{{ msg }}</span>
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+
+      <form method="POST" action="{{ url_for('signup') }}" id="signupForm" novalidate>
+
+        <div class="field">
+          <label for="username">Username</label>
+          <div class="input-wrap">
+            <input type="text" id="username" name="username" required
+                   autocomplete="username" placeholder="3–20 chars, letters & numbers"
+                   pattern="[A-Za-z0-9_]{3,20}"
+                   value="{{ username or '' }}">
+            <span class="ico">◈</span>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="email">Email Address</label>
+          <div class="input-wrap">
+            <input type="email" id="email" name="email" required
+                   autocomplete="email" placeholder="you@company.com"
+                   value="{{ email or '' }}">
+            <span class="ico">✉</span>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="password">Password</label>
+          <div class="input-wrap">
+            <input type="password" id="password" name="password" required
+                   autocomplete="new-password" placeholder="At least 8 characters"
+                   minlength="8">
+            <span class="ico">⬢</span>
+            <button type="button" class="pw-toggle" onclick="togglePw('password',this)">SHOW</button>
+          </div>
+          <div class="pw-meter" id="pwMeter">
+            <div class="pw-bar"></div><div class="pw-bar"></div>
+            <div class="pw-bar"></div><div class="pw-bar"></div>
+          </div>
+          <div class="pw-hint">
+            <span>Use 8+ chars, mix letters &amp; numbers</span>
+            <span class="strength" id="pwStrength">—</span>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="confirm">Confirm Password</label>
+          <div class="input-wrap">
+            <input type="password" id="confirm" name="confirm" required
+                   autocomplete="new-password" placeholder="Re-enter password"
+                   minlength="8">
+            <span class="ico">⬢</span>
+            <button type="button" class="pw-toggle" onclick="togglePw('confirm',this)">SHOW</button>
+          </div>
+          <div class="match-hint" id="matchHint" style="visibility:hidden">
+            <span id="matchIco">○</span><span id="matchTxt">Passwords match</span>
+          </div>
+        </div>
+
+        <!-- ── TERMS & PRIVACY CHECKBOX (REQUIRED) ─────────────────── -->
+        <div class="terms-wrap" id="termsWrap">
+          <label class="checkbox" id="termsLabel">
+            <input type="checkbox" name="terms" id="termsCheck">
+            <span class="cbox"></span>
+            <span class="checkbox-text">
+              I have read and agree to the
+              <a href="#" onclick="openModal('termsModal'); return false;">Terms of Service</a>
+              and
+              <a href="#" onclick="openModal('privacyModal'); return false;">Privacy Policy</a>.
+              <span style="color:var(--err);margin-left:2px" title="Required">*</span>
+            </span>
+          </label>
+          <div class="terms-warning" id="termsWarning">
+            <span>⚠</span>
+            <span>You must read and accept the Terms &amp; Privacy Policy to continue.</span>
+          </div>
+        </div>
+        <!-- ─────────────────────────────────────────────────────────── -->
+
+        <button type="submit" class="btn btn-primary" id="submitBtn">
+          <span id="btnLabel">⏵ Create Account</span>
+        </button>
+      </form>
+
+      <div class="divider">ALREADY REGISTERED?</div>
+      <div class="alt">
+        <a href="{{ url_for('login') }}">← Back to sign in</a>
+      </div>
+    </section>
+
+    <!-- RIGHT: onboarding pitch -->
+    <aside class="pitch">
+      <div>
+        <div class="pitch-tag">Onboarding · 3 Steps</div>
+        <h1>Your sentinel for production logs.</h1>
+        <p>Drop in any log file. We handle the parsing, ML pipeline, and root-cause ranking — you focus on the incidents that matter.</p>
+
+        <div class="steps">
+          <div class="step">
+            <div class="step-num">01</div>
+            <div class="step-body">
+              <div class="step-title">Create your account</div>
+              <div class="step-sub">Username + email. We never share your data.</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">02</div>
+            <div class="step-body">
+              <div class="step-title">Upload a log file</div>
+              <div class="step-sub">Supports .log, .txt, .csv up to 50MB.</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">03</div>
+            <div class="step-body">
+              <div class="step-title">Run the pipeline</div>
+              <div class="step-sub">TF-IDF → Isolation Forest → BERT → root-cause ranking.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="pitch-foot">
+        <span>SECURE · ENCRYPTED</span>
+        <span><b>HASH:</b> werkzeug · pbkdf2:sha256</span>
+      </div>
+    </aside>
+  </div>
+</main>
+
+<div class="page-footer">
+  © LogSentinel AI · Encrypted session · v2.4
+</div>
+
+<script>
+// ── Show/hide password ────────────────────────────────────────────────────
+function togglePw(id, btn){
+  const el = document.getElementById(id);
+  const showing = el.type === 'text';
+  el.type = showing ? 'password' : 'text';
+  btn.textContent = showing ? 'SHOW' : 'HIDE';
+}
+
+// ── Password strength ─────────────────────────────────────────────────────
+const pwInput      = document.getElementById('password');
+const bars         = document.querySelectorAll('#pwMeter .pw-bar');
+const strengthLbl  = document.getElementById('pwStrength');
+const LABELS       = ['—','WEAK','FAIR','GOOD','STRONG'];
+
+function scorePassword(pw){
+  if (!pw) return 0;
+  let s = 0;
+  if (pw.length >= 8)  s++;
+  if (pw.length >= 12) s++;
+  if (/[A-Z]/.test(pw) && /[a-z]/.test(pw)) s++;
+  if (/\d/.test(pw) && /[^A-Za-z0-9]/.test(pw)) s++;
+  return Math.min(s, 4);
+}
+
+pwInput.addEventListener('input', () => {
+  const s = scorePassword(pwInput.value);
+  bars.forEach((b,i)=>{ b.className='pw-bar'; if(i<s) b.classList.add('on-'+s); });
+  strengthLbl.className = 'strength'+(s?' s-'+s:'');
+  strengthLbl.textContent = LABELS[s];
+  checkMatch();
+});
+
+// ── Confirm match ─────────────────────────────────────────────────────────
+const confirmInput = document.getElementById('confirm');
+const matchHint    = document.getElementById('matchHint');
+const matchIco     = document.getElementById('matchIco');
+const matchTxt     = document.getElementById('matchTxt');
+
+function checkMatch(){
+  if(!confirmInput.value){ matchHint.style.visibility='hidden'; return; }
+  matchHint.style.visibility='visible';
+  const ok = pwInput.value === confirmInput.value;
+  matchHint.className = 'match-hint '+(ok?'match':'nomatch');
+  matchIco.textContent = ok?'✓':'✗';
+  matchTxt.textContent = ok?'Passwords match':'Passwords do not match';
+}
+confirmInput.addEventListener('input', checkMatch);
+
+// ══════════════════════════════════════════════════════════════════════════
+// MODAL SYSTEM
+// ══════════════════════════════════════════════════════════════════════════
+function openModal(id){
+  document.getElementById(id).classList.add('open');
+  document.body.style.overflow = 'hidden'; // prevent background scroll
+}
+
+function closeModal(id){
+  document.getElementById(id).classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+// Close modal if user clicks outside the modal box
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+  overlay.addEventListener('click', function(e){
+    if(e.target === this) closeModal(this.id);
+  });
+});
+
+// Close modal on Escape key
+document.addEventListener('keydown', function(e){
+  if(e.key === 'Escape'){
+    document.querySelectorAll('.modal-overlay.open').forEach(m => closeModal(m.id));
+  }
+});
+
+// ── Accept / Decline buttons in modal ────────────────────────────────────
+function acceptTerms(){
+  // Check the checkbox
+  document.getElementById('termsCheck').checked = true;
+  // Remove error state
+  document.getElementById('termsWrap').classList.remove('required-highlight');
+  document.getElementById('termsWarning').classList.remove('visible');
+  // Close whichever modal is open
+  document.querySelectorAll('.modal-overlay.open').forEach(m => closeModal(m.id));
+}
+
+function declineTerms(){
+  // Uncheck the checkbox
+  document.getElementById('termsCheck').checked = false;
+  // Close modal
+  document.querySelectorAll('.modal-overlay.open').forEach(m => closeModal(m.id));
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// FORM SUBMIT — enforce terms checkbox
+// ══════════════════════════════════════════════════════════════════════════
+document.getElementById('signupForm').addEventListener('submit', function(e){
+  const termsCheck   = document.getElementById('termsCheck');
+  const termsWrap    = document.getElementById('termsWrap');
+  const termsWarning = document.getElementById('termsWarning');
+
+  // ── BLOCK SUBMISSION if terms not accepted ────────────────────────
+  if(!termsCheck.checked){
+    e.preventDefault(); // stop form from submitting
+
+    // Show red border + warning message
+    termsWrap.classList.add('required-highlight');
+    termsWarning.classList.add('visible');
+
+    // Shake animation
+    termsWrap.classList.remove('shake');
+    void termsWrap.offsetWidth; // force reflow to restart animation
+    termsWrap.classList.add('shake');
+
+    // Scroll into view so user sees it
+    termsWrap.scrollIntoView({ behavior:'smooth', block:'center' });
+    return;
+  }
+
+  // ── Terms accepted — show loading state ───────────────────────────
+  const btn = document.getElementById('submitBtn');
+  const lbl = document.getElementById('btnLabel');
+  btn.disabled = true;
+  lbl.innerHTML = '<span class="spinner"></span> Creating account…';
+});
+
+// Remove error state as soon as user checks the box
+document.getElementById('termsCheck').addEventListener('change', function(){
+  if(this.checked){
+    document.getElementById('termsWrap').classList.remove('required-highlight');
+    document.getElementById('termsWarning').classList.remove('visible');
+  }
+});
+</script>
+</body>
+</html>
